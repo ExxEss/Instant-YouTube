@@ -1,0 +1,1 @@
+{"version":3,"sources":["webpack://instant-youtube/./src/js/adblocker.js"],"names":[],"mappings":";;;;;AAAA;AACA;AACA;AACA;AACA,CAAC","file":"./src/js/adblocker.js","sourcesContent":["setTimeout(()=> {\n    // console.log(\"ok\")\n    // let video = document.querySelector(\"video\");\n    // video.pause();\n}, 10000)\n"],"sourceRoot":""}
