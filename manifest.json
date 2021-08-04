@@ -22,12 +22,14 @@
     "webNavigation",
     "storage",
     "tabs",
+    "activeTab",
     "<all_urls>"
   ],
 
   "background": {
     "scripts": [
-      "dist/src/js/background.js"],
+      "dist/src/js/background.js"
+    ],
     "persistent": true
   },
 

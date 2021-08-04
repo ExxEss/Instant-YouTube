@@ -4,6 +4,7 @@ module.exports = {
     entry: {
         './src/js/content': './src/js/content.js',
         './src/js/background': './src/js/background.js',
+        './src/js/hotReload': './src/js/hotReload.js',
         './src/js/adblocker': './src/js/adblocker.js',
     },
 
@@ -13,7 +14,7 @@ module.exports = {
         sourceMapFilename: "[name].js.map"
     },
 
-    devtool: "eval-cheap-source-map",
+    devtool: "source-map",
 
     module: {
         rules: [

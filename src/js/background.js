@@ -1,11 +1,26 @@
 (function () {
+    require("crx-hotreload");
     let browser = require("webextension-polyfill");
+
+    function changeVideoTime(currentTime) {
+        return `
+            (function() {
+                let video = document.querySelector('video');
+                if (video !== null) {
+                    video.currentTime = ${currentTime}; 
+                    video.play();
+                }
+            })();`;
+     }
 
     browser.runtime.onMessage.addListener(
         function (message, sender) {
-
             if (message.type === "viewCount")
                 getViewsInfoByUrls(message.urls, sender);
+            else if (message.type === "changeVideoTime") {
+                browser.tabs.executeScript(sender.tab.id,
+                    {code: changeVideoTime(message.time), allFrames: true});
+            }
         });
 
     function getViewsInfoByUrls(urls, sender) {
