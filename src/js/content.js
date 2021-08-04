@@ -1,8 +1,6 @@
 import "../css/style.css";
 
 (function () {
-    let isChrome = !!window.chrome && (!!window.chrome.webstore || !!window.chrome.runtime);
-
     let browser = require("webextension-polyfill");
     let videoLinks,
         iframe,
@@ -15,7 +13,9 @@ import "../css/style.css";
         offset = [0, 0],
         mouseDown,
         currentPlayButton,
-        logoUrlMap = new Map();
+        logoUrlMap = new Map(),
+        urlButtonMap = new Map(),
+        processedLinks = [];
 
     function createVideoPanel() {
         iframe = document.createElement("iframe");
@@ -26,12 +26,12 @@ import "../css/style.css";
         controlBar = document.createElement("div");
         iframeContainer = document.createElement("div");
 
-        iframe.className = "gooTubeEmbeddedVideo";
-        controlBar.className = "gooTubeControlBar";
-        dotContainer.className = "gooTubeDotContainer";
-        closeDot.className = "gooTubeCloseDot";
+        iframe.className = "instantYoutubeEmbeddedVideo";
+        controlBar.className = "instantYoutubeControlBar";
+        dotContainer.className = "instantYoutubeDotContainer";
+        closeDot.className = "instantYoutubeCloseDot";
         closeLogo.className = "closeLogo";
-        iframeContainer.className = "gooTubeVideoContainer";
+        iframeContainer.className = "instantYoutubeVideoContainer";
         closeLogo.className = "closeLogo";
         closeLogo.src = browser.extension.getURL('images/closeLogo.png');
 
@@ -77,7 +77,7 @@ import "../css/style.css";
         }
     }
 
-    document.addEventListener('mousemove', function (event) {
+    window.addEventListener('mousemove', function (event) {
         if (mouseDown) {
             mousePosition = {
                 x: event.clientX,
@@ -89,11 +89,9 @@ import "../css/style.css";
     }, true);
 
     function saveVideoFrame() {
-        if(!isChrome || isChrome && browser.app.isInstalled){
             browser.storage.sync.set({
                 "videoFrameBound": JSON.stringify(iframeContainer.getBoundingClientRect())
             });
-        }
     }
 
     function setVideoFrameBoundAsBefore() {
@@ -102,6 +100,8 @@ import "../css/style.css";
 
             if (info && info.videoFrameBound)
                 bound = JSON.parse(info.videoFrameBound)
+
+            // alert("save video frame as before")
 
             if (bound && bound.height > 30) {
                 iframeContainer.style.top = bound.top.toString() + "px";
@@ -114,26 +114,27 @@ import "../css/style.css";
         });
     }
 
-    function main() {
-        createVideoPanel();
+    function isInsertableVideoLink(videoLink) {
+        return videoLink.href.indexOf("https://www.youtube.com/watch") === 0
+            && !videoLink.href.includes("t=")
+            || videoLink.href.indexOf("https://www.bilibili.com") === 0
+            && videoLink.href.includes("video") ||
+            videoLink.href.includes("m.bilibili.com") &&
+            videoLink.href.indexOf("https://m.bilibili.com") === 0
+            && videoLink.href.includes("video");
+    }
 
-        if (document.getElementsByClassName("gootubeViewCount").length === 0 &&
-            // !document.location.href.includes("youtube.com") &&
+    function insertPlayButtons() {
+        if (document.getElementsByClassName("instantYoutubeViewCount").length === 0 &&
+            !document.location.href.includes("youtube.com") &&
             !document.location.href.includes("bilibili.com")) {
             videoLinks = Array.from(document.querySelectorAll("a"));
 
             let urls = videoLinks.reduce(function (result, videoLink) {
-                if (videoLink.href.indexOf("https://www.youtube.com/watch") === 0
-                    && !videoLink.href.includes("t=")
-                    || videoLink.href.indexOf("https://www.bilibili.com") === 0
-                    && videoLink.href.includes("video") ||
-                    videoLink.href.includes("m.bilibili.com") &&
-                    videoLink.href.indexOf("https://m.bilibili.com") === 0
-                    && videoLink.href.includes("video")) {
-
+                if (isInsertableVideoLink(videoLink)) {
                     if (!result.includes(videoLink.href) || videoLink.querySelector("img")) {
                         let container = document.createElement("div");
-                        container.className = "gooTubeButtonContainer";
+                        container.className = "instantYoutubeButtonContainer";
 
                         let shadowRoot = container.attachShadow({mode: 'open'});
                         shadowRoot.innerHTML = `<style>
@@ -145,7 +146,7 @@ import "../css/style.css";
                                                     height: 24px;
                                                 }
                                             
-                                               .gooTubeWatchButton {
+                                               .instantYoutubeWatchButton {
                                                     height: 20px;
                                                     width: 20px;
                                                     cursor: pointer;
@@ -156,7 +157,7 @@ import "../css/style.css";
                                                     align-items: center;
                                                }
                                                
-                                               .gootubeViewCount {
+                                               .instantYoutubeViewCount {
                                                     color: #555555;
                                                     text-align: center;
                                                     /*margin-top: 2px;*/
@@ -164,7 +165,7 @@ import "../css/style.css";
                                             </style>`;
 
                         let button = document.createElement("div");
-                        button.className = "gooTubeWatchButton";
+                        button.className = "instantYoutubeWatchButton";
                         button.innerHTML = `<svg fill="#555555" viewBox="0 0 24 24">
                     <path d="M10 16.5l6-4.5-6-4.5v9zM5 20h14a1 1 0 0 0 1-1V5a1 1 0 0 
                     0-1-1H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1zm14.5 2H5a3 3 0 0 1-3-3V4.4A2.4 2.4 
@@ -172,51 +173,22 @@ import "../css/style.css";
                     </svg>`;
 
                         shadowRoot.appendChild(button);
-
-                        button.onmouseover = () => {
-                        }
-                        button.onmouseleave = () => {
-                        }
-
                         button.onclick = (e) => {
                             e.preventDefault();
                             e.stopImmediatePropagation();
-
-                            let src,
-                                href = videoLink.href;
-
-                            if (currentPlayButton)
-                                currentPlayButton.firstChild.style.fill = "";
-
-                            currentPlayButton = button;
-
-                            if (href.includes("youtube")) {
-                                button.firstChild.style.fill = "#DD0000";
-                                src = href.split("&")[0];
-                                src = src.replace("watch?v=", "embed/") + "?autoplay=1";
-                            } else {
-                                button.firstChild.style.fill = "blue";
-                                src = href.split("/");
-                                src = "//player.bilibili.com/player.html?bvid="
-                                    + src[src.indexOf("video") + 1];
-                            }
-
-                            iframe.setAttribute("src", src);
-                            document.body.insertBefore(iframeContainer, document.body.childNodes[0]);
-
-                            if (iframeContainer.getBoundingClientRect().height < 30) {
-                                iframeContainer.style.height = "50%";
-                            }
+                            buttonClickHandler(videoLink, button);
                         }
 
                         if (!videoLink.querySelector("img") ||
                             videoLinks.filter(link => link.href === videoLink.href).length ===
                             videoLinks.filter(link => link.href === videoLink.href
-                                && link.querySelector("img")).length) {
+                                && link.querySelector("img")).length
+                            || window.location.href.includes("duckduckgo")) {
 
                             videoLink.parentNode.insertBefore(container, videoLink.nextSibling);
                             result.push(videoLink.href);
                             logoUrlMap.set(videoLink, container);
+                            urlButtonMap.set(videoLink.href, {"videoLink": videoLink, "button": button});
                         }
                     }
                 }
@@ -231,10 +203,97 @@ import "../css/style.css";
         }
     }
 
-    main();
+    function changeVideoTime(url) {
+        url = url.split("&t=");
+
+        browser.runtime.sendMessage({
+            type: "changeVideoTime",
+            url: url[0],
+            time: url[1]
+        });
+    }
+
+    function buttonClickHandler(videoLink, button) {
+        let src, href = videoLink.href;
+
+        if (href.includes("youtube")) {
+            src = href.split("&")[0];
+            src = src.replace("watch?v=", "embed/") + "?autoplay=1";
+
+            if (document.getElementsByClassName(
+                "instantYoutubeVideoContainer").length !== 0
+                && src === iframe.src) return;
+
+            button.firstChild.style.fill = "#DD0000";
+
+        } else {
+            if (href.includes("av")) {
+                src = "//player.bilibili.com/player.html?aid=" + href.split("av")[1].split("/")[0];
+            } else {
+                if (href.includes("?from"))
+                    href = href.split("?from")[0];
+                src = href.split("/");
+                src = "//player.bilibili.com/player.html?bvid="
+                    + src[src.indexOf("video") + 1];
+            }
+            button.firstChild.style.fill = "rgb(0, 160, 215)";
+        }
+
+        if (currentPlayButton)
+            currentPlayButton.firstChild.style.fill = "";
+
+        currentPlayButton = button;
+
+        iframe.setAttribute("src", src);
+        document.body.insertBefore(iframeContainer, document.body.childNodes[0]);
+
+        if (iframeContainer.getBoundingClientRect().height < 30) {
+            iframeContainer.style.height = "50%";
+        }
+    }
+
+    function keyMomentsHandler() {
+        new MutationObserver(function() {
+            try {
+                let videoLinks = Array.from(document.querySelectorAll("a"));
+                for (let i = 0; i < videoLinks.length; i++) {
+                    let videoLink = videoLinks[i];
+
+                    if (processedLinks.includes(videoLink)) return;
+                    else processedLinks.push(videoLink);
+
+                    if (videoLink.href.indexOf("https://www.youtube.com/watch") === 0
+                        && videoLink.href.includes("t=")) {
+                        let href = videoLink.href;
+
+                        videoLink.onclick = (e) => {
+                            e.preventDefault();
+                            e.stopImmediatePropagation();
+
+                            /* Google search could change href after clicking for Firefox */
+                            videoLink.href = href;
+
+                            let url = href.split("&t")[0],
+                                urlButton = urlButtonMap.get(url),
+
+                                /* Will change after buttonClickHandler */
+                                previousIframeSrc = iframe.src;
+
+                            buttonClickHandler(urlButton.videoLink, urlButton.button);
+
+                            let timeout = previousIframeSrc && previousIframeSrc.includes(url.split("v=")[1]) ? 0 : 1000;
+                            window.setTimeout(() => { changeVideoTime(videoLink.href) }, timeout);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log(e);
+            }
+        }).observe(document, {childList: true, subtree: true});
+    }
 
     window.addEventListener('beforeunload', function () {
-        if (document.getElementsByClassName("gooTubeVideoContainer").length > 0)
+        if (document.getElementsByClassName("instantYoutubeVideoContainer").length > 0)
             saveVideoFrame();
     });
 
@@ -246,26 +305,39 @@ import "../css/style.css";
         }
     }, true);
 
-    browser.runtime.onMessage.addListener(
-        function (message) {
-            if (message.type === "viewCount") {
-                for (let videoLink of videoLinks) {
-                    if (videoLink.href === message.url &&
-                        message.viewCount !== undefined &&
-                        message.viewCount !== null) {
+    function insertVideoViewCount(message) {
+        if (message.type === "viewCount") {
+            for (let videoLink of videoLinks) {
+                if (videoLink.href === message.url &&
+                    message.viewCount !== undefined &&
+                    message.viewCount !== null) {
 
-                        let viewCount = document.createElement("div");
-                        viewCount.className = "gootubeViewCount";
-                        viewCount.innerHTML = message.viewCount;
+                    let viewCount = document.createElement("div");
+                    viewCount.className = "instantYoutubeViewCount";
+                    viewCount.innerHTML = message.viewCount;
 
-                        let container = logoUrlMap.get(videoLink);
-
-                        if (container) {
-                            logoUrlMap.delete(videoLink);
-                            container.shadowRoot.appendChild(viewCount);
-                        }
+                    let container = logoUrlMap.get(videoLink);
+                    if (container) {
+                        logoUrlMap.delete(videoLink);
+                        container.shadowRoot.appendChild(viewCount);
                     }
                 }
             }
-        });
+        }
+    }
+
+    browser.runtime.onMessage.addListener(insertVideoViewCount);
+
+    function main(){
+        createVideoPanel();
+        insertPlayButtons();
+        keyMomentsHandler();
+    }
+    main();
+
+    window.onload = () => {
+        if (document.getElementsByClassName(
+            "instantYoutubeButtonContainer").length === 0)
+            insertPlayButtons();
+    }
 })();
