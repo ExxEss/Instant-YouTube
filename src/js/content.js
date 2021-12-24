@@ -40,7 +40,7 @@ import Util from "./util";
         bilibili: "bilibili.com"
     }
 
-    function createVideoPanel() {
+    let createVideoPanel = () => {
         iframe = document.createElement("iframe");
         closeDot = document.createElement("div");
         closeLogo = document.createElement("img");
@@ -109,41 +109,41 @@ import Util from "./util";
         }
     }, true);
 
-    function addClickEventListenerToThumbnails() {
-        let thumbnail = getVideoLinksWithThumbnail();
+    // function addClickEventListenerToThumbnails() {
+    //     let thumbnail = getVideoLinksWithThumbnail();
 
-        for (let link of thumbnail) {
-            let thumbnail = !!link.querySelector("g-img")
-                ? link.querySelector("g-img")
-                : link.querySelector("img");
+    //     for (let link of thumbnail) {
+    //         let thumbnail = !!link.querySelector("g-img")
+    //             ? link.querySelector("g-img")
+    //             : link.querySelector("img");
 
-            thumbnail.parentElement.addEventListener("click",
-                event => {
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-                    makeVideo(getEmbeddedVideoUrl(link.href));
-                    insertPlayButton(thumbnail);
-                    changeVideoButtonColor(thumbnail.parentElement);
-                }, true);
-        }
-    }
+    //         thumbnail.parentElement.addEventListener("click",
+    //             event => {
+    //                 event.preventDefault();
+    //                 event.stopImmediatePropagation();
+    //                 makeVideo(getEmbeddedVideoUrl(link.href));
+    //                 insertPlayButton(thumbnail);
+    //                 changeVideoButtonColor(thumbnail.parentElement);
+    //             }, true);
+    //     }
+    // }
 
-    function insertPlayButton(element) {
-        if (!element.querySelector("svg"))
-            element.childNodes[1].innerHTML = PLAYBUTTON;
-    }
+    // function insertPlayButton(element) {
+    //     if (!element.querySelector("svg"))
+    //         element.childNodes[1].innerHTML = PLAYBUTTON;
+    // }
 
-    function changeVideoButtonColor(element) {
-        let button = element.querySelector("svg");
-        if (!!button)
-            button.style.fill = "red";
-    }
+    // function changeVideoButtonColor(element) {
+    //     let button = element.querySelector("svg");
+    //     if (!!button)
+    //         button.style.fill = "red";
+    // }
 
-    function getVideoLinksWithThumbnail() {
-        return Array.from(document.querySelectorAll("a"))
-            .filter(link => isSupportedVideoLink(link))
-            .filter(link => link.querySelector("img"));
-    }
+    // function getVideoLinksWithThumbnail() {
+    //     return Array.from(document.querySelectorAll("a"))
+    //         .filter(link => isSupportedVideoLink(link))
+    //         .filter(link => link.querySelector("img"));
+    // }
 
     function makeVideo(src) {
         iframe.setAttribute("src", src);
@@ -154,31 +154,31 @@ import Util from "./util";
             iframeContainer.style.height = "50%";
     }
 
-    function getEmbeddedVideoUrl(href) {
-        if (href.includes(supportedDomains.youtube))
-            return getYoutubeEmbeddedVideoUrl(href);
-        else if (href.includes(supportedDomains.bilibili)) {
-            return getBilibiliEmbeddedVideoUrl(href);
-        }
-    }
+    // function getEmbeddedVideoUrl(href) {
+    //     if (href.includes(supportedDomains.youtube))
+    //         return getYoutubeEmbeddedVideoUrl(href);
+    //     else if (href.includes(supportedDomains.bilibili)) {
+    //         return getBilibiliEmbeddedVideoUrl(href);
+    //     }
+    // }
 
-    function getYoutubeEmbeddedVideoUrl(url) {
-        return url.split("&")[0]
-            .replace("watch?v=", "embed/") + "?autoplay=1";
-    }
+    // function getYoutubeEmbeddedVideoUrl(url) {
+    //     return url.split("&")[0]
+    //         .replace("watch?v=", "embed/") + "?autoplay=1";
+    // }
 
-    function getBilibiliEmbeddedVideoUrl(href) {
-        if (href.includes("av")) {
-            return "//player.bilibili.com/player.html?aid="
-                + href.split("av")[1].split("/")[0];
-        } else {
-            if (href.includes("?"))
-                href = href.split("?")[0];
-            href = href.split("/");
-            return "//player.bilibili.com/player.html?bvid="
-                + href[href.indexOf("video") + 1];
-        }
-    }
+    // function getBilibiliEmbeddedVideoUrl(href) {
+    //     if (href.includes("av")) {
+    //         return "//player.bilibili.com/player.html?aid="
+    //             + href.split("av")[1].split("/")[0];
+    //     } else {
+    //         if (href.includes("?"))
+    //             href = href.split("?")[0];
+    //         href = href.split("/");
+    //         return "//player.bilibili.com/player.html?bvid="
+    //             + href[href.indexOf("video") + 1];
+    //     }
+    // }
 
     function saveVideoFrame(resolve) {
         browser.storage.sync.set({
