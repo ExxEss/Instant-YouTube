@@ -7,7 +7,7 @@ import Util from "./util";
     if (document.location.href.includes('youtube') || 
     document.location.href.includes('bilibili')) return;
     
-    let browser = require("webextension-polyfill");
+    const browser = require("webextension-polyfill");
     let videoLinks,
         iframe,
         iframeContainer,
@@ -40,7 +40,7 @@ import Util from "./util";
         bilibili: "bilibili.com"
     }
 
-    let createVideoPanel = () => {
+    const createVideoPanel = () => {
         iframe = document.createElement("iframe");
         closeDot = document.createElement("div");
         closeLogo = document.createElement("img");
@@ -145,7 +145,7 @@ import Util from "./util";
     //         .filter(link => link.querySelector("img"));
     // }
 
-    function makeVideo(src) {
+    const makeVideo = (src) => {
         iframe.setAttribute("src", src);
         document.body.insertBefore(iframeContainer,
             document.body.childNodes[0]);
@@ -180,7 +180,7 @@ import Util from "./util";
     //     }
     // }
 
-    function saveVideoFrame(resolve) {
+    const saveVideoFrame = (resolve) => {
         browser.storage.sync.set({
             "videoFrameBound": JSON.stringify(
                 iframeContainer.getBoundingClientRect()
@@ -188,7 +188,7 @@ import Util from "./util";
         }).then(resolve);
     }
 
-    function setVideoFrameBoundAsBefore() {
+    const setVideoFrameBoundAsBefore = () => {
         browser.storage.sync.get(['videoFrameBound']).then(function (info) {
             let bound;
 
@@ -206,7 +206,7 @@ import Util from "./util";
         });
     }
 
-    function isSupportedVideoLink(videoLink) {
+    const isSupportedVideoLink = (videoLink) => {
         return videoLink.href.indexOf("https://www.youtube.com/watch") === 0
             && !videoLink.href.includes("t=")
             || videoLink.href.indexOf("https://www.bilibili.com") === 0
@@ -216,7 +216,7 @@ import Util from "./util";
             && videoLink.href.includes("video");
     }
 
-    function insertPlayButtons() {
+    const insertPlayButtons = () => {
         if (document.getElementsByClassName("instantYoutubeViewCount").length === 0 &&
             !document.location.href.includes("youtube.com") &&
             !document.location.href.includes("bilibili.com")) {
@@ -295,7 +295,7 @@ import Util from "./util";
         }
     }
 
-    function changeVideoTime(url) {
+    const changeVideoTime = (url) => {
         url = url.split("&t=");
 
         browser.runtime.sendMessage({
@@ -305,7 +305,7 @@ import Util from "./util";
         });
     }
 
-    function buttonClickHandler(videoLink, button) {
+    const buttonClickHandler = (videoLink, button) => {
         let src, href = videoLink.href;
 
         if (href.includes("youtube")) {
@@ -338,7 +338,7 @@ import Util from "./util";
         makeVideo(src);
     }
 
-    function keyMomentsHandler() {
+    const keyMomentsHandler = () => {
         new MutationObserver(function () {
             try {
                 let videoLinks = Array.from(document.querySelectorAll("a"));
@@ -380,7 +380,7 @@ import Util from "./util";
         }).observe(document, { childList: true, subtree: true });
     }
 
-    function removeVideo() {
+    const removeVideo = () => {
         if (document.getElementsByClassName(
             "instantYoutubeVideoContainer").length > 0) {
             saveVideoFrame(() => {
@@ -401,7 +401,7 @@ import Util from "./util";
             removeVideo();
     });
 
-    function insertVideoViewCount(message) {
+    const insertVideoViewCount = (message) => {
         if (message.type === "viewCount") {
             for (let videoLink of videoLinks) {
                 if (videoLink.href === message.url &&
@@ -424,7 +424,7 @@ import Util from "./util";
 
     browser.runtime.onMessage.addListener(insertVideoViewCount);
 
-    function main() {
+    const main = () => {
         createVideoPanel();
         // addClickEventListenerToThumbnails();
         insertPlayButtons();
