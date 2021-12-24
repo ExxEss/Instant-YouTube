@@ -3,7 +3,7 @@
     let pattern = /(200\d|20[0-2][0-9])/;
 
     for (let videoLink of videoLinks) {
-        if (videoLink.href.includes("www.youtube.com/watch")){
+        if (videoLink.href.includes("www.youtube.com/watch")) {
             if (videoLink.querySelector('img')) {
                 while (videoLink.innerText.search(pattern) === -1) {
                     videoLink = videoLink.parentNode;

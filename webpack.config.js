@@ -4,8 +4,7 @@ module.exports = {
     entry: {
         './src/js/content': './src/js/content.js',
         './src/js/background': './src/js/background.js',
-        './src/js/hotReload': './src/js/hotReload.js',
-        './src/js/adblocker': './src/js/adblocker.js',
+        './src/js/iframe': './src/js/iframe.js',
     },
 
     output: {

@@ -1,6 +1,6 @@
 {
   "name": "Instant Youtube",
-  "version": "0.1.0",
+  "version": "1.0",
   "description": "Watch videos on search engines directly",
   "author": "Xie Yuguo",
   "homepage_url": "https://github.com/ExxEss/Instant Youtube",
@@ -47,8 +47,8 @@
     },
 
     {
-      "matches": ["*://*/*"],
-      "js": ["dist/src/js/adblocker.js"],
+      "matches": ["https://www.youtube.com/embed/*"],
+      "js": ["dist/src/js/iframe.js"],
       "run_at": "document_start",
       "all_frames": true
     }

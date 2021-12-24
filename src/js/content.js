@@ -1,6 +1,10 @@
+"use strict";
 import "../css/style.css";
 
 (function () {
+    if (document.location.href.includes('youtube') || 
+    document.location.href.includes('bilibili')) return;
+    
     let browser = require("webextension-polyfill");
     let videoLinks,
         iframe,
@@ -16,6 +20,37 @@ import "../css/style.css";
         logoUrlMap = new Map(),
         urlButtonMap = new Map(),
         processedLinks = [];
+
+    const PLAYBUTTON =
+        `
+        <svg height="24" focusable="false" xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 24 24" style="opacity:100%;fill:white;
+        margin: 22px 50px 20px 46px">
+            <path d="M12 2C6.48 2 2 
+                6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 
+                2zm-2 14.5v-9l6 4.5-6 4.5z">
+            </path>
+        </svg>
+    `
+
+    const supportedDomains = {
+        youtube: "youtube.com",
+        bilibili: "bilibili.com"
+    }
+
+    function isSelectable(element) {
+      var unselectableTypes;
+      if (!(element instanceof Element)) {
+          return false;
+      }
+    
+      unselectableTypes = ["button", "checkbox", "color",
+          "file", "hidden", "image", "radio", "reset", "submit"];
+      return (element.nodeName.toLowerCase() === "input" &&
+          unselectableTypes.indexOf(element.type) === -1) ||
+          element.nodeName.toLowerCase() === "textarea" ||
+          element.isContentEditable;
+    }
 
     function createVideoPanel() {
         iframe = document.createElement("iframe");
@@ -58,17 +93,13 @@ import "../css/style.css";
             closeLogo.style.display = "none";
         }
 
-        closeDot.onclick = () => {
-            saveVideoFrame();
-            closeLogo.style.display = "none";
-            iframeContainer.parentNode.removeChild(iframeContainer);
-        };
+        closeDot.onclick = removeVideo;
 
-        controlBar.onmousedown = (e) => {
+        controlBar.onmousedown = (event) => {
             mouseDown = true;
             offset = [
-                iframeContainer.offsetLeft - e.clientX,
-                iframeContainer.offsetTop - e.clientY
+                iframeContainer.offsetLeft - event.clientX,
+                iframeContainer.offsetTop - event.clientY
             ];
         }
 
@@ -77,21 +108,96 @@ import "../css/style.css";
         }
     }
 
-    window.addEventListener('mousemove', function (event) {
+    window.addEventListener('mousemove', (event) => {
         if (mouseDown) {
             mousePosition = {
                 x: event.clientX,
                 y: event.clientY
             };
-            iframeContainer.style.left = (mousePosition.x + offset[0]) + 'px';
-            iframeContainer.style.top = (mousePosition.y + offset[1]) + 'px';
+            iframeContainer.style.left =
+                (mousePosition.x + offset[0]) + 'px';
+            iframeContainer.style.top =
+                (mousePosition.y + offset[1]) + 'px';
         }
     }, true);
 
-    function saveVideoFrame() {
-            browser.storage.sync.set({
-                "videoFrameBound": JSON.stringify(iframeContainer.getBoundingClientRect())
-            });
+    function addClickEventListenerToThumbnails() {
+        let thumbnail = getVideoLinksWithThumbnail();
+
+        for (let link of thumbnail) {
+            let thumbnail = !!link.querySelector("g-img")
+                ? link.querySelector("g-img")
+                : link.querySelector("img");
+
+            thumbnail.parentElement.addEventListener("click",
+                event => {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    makeVideo(getEmbeddedVideoUrl(link.href));
+                    insertPlayButton(thumbnail);
+                    changeVideoButtonColor(thumbnail.parentElement);
+                }, true);
+        }
+    }
+
+    function insertPlayButton(element) {
+        if (!element.querySelector("svg"))
+            element.childNodes[1].innerHTML = PLAYBUTTON;
+    }
+
+    function changeVideoButtonColor(element) {
+        let button = element.querySelector("svg");
+        if (!!button)
+            button.style.fill = "red";
+    }
+
+    function getVideoLinksWithThumbnail() {
+        return Array.from(document.querySelectorAll("a"))
+            .filter(link => isSupportedVideoLink(link))
+            .filter(link => link.querySelector("img"));
+    }
+
+    function makeVideo(src) {
+        iframe.setAttribute("src", src);
+        document.body.insertBefore(iframeContainer,
+            document.body.childNodes[0]);
+        
+        if (iframeContainer.getBoundingClientRect().height < 30)
+            iframeContainer.style.height = "50%";
+    }
+
+    function getEmbeddedVideoUrl(href) {
+        if (href.includes(supportedDomains.youtube))
+            return getYoutubeEmbeddedVideoUrl(href);
+        else if (href.includes(supportedDomains.bilibili)) {
+            return getBilibiliEmbeddedVideoUrl(href);
+        }
+    }
+
+    function getYoutubeEmbeddedVideoUrl(url) {
+        return url.split("&")[0]
+            .replace("watch?v=", "embed/") + "?autoplay=1";
+    }
+
+    function getBilibiliEmbeddedVideoUrl(href) {
+        if (href.includes("av")) {
+            return "//player.bilibili.com/player.html?aid="
+                + href.split("av")[1].split("/")[0];
+        } else {
+            if (href.includes("?"))
+                href = href.split("?")[0];
+            href = href.split("/");
+            return "//player.bilibili.com/player.html?bvid="
+                + href[href.indexOf("video") + 1];
+        }
+    }
+
+    function saveVideoFrame(resolve) {
+        browser.storage.sync.set({
+            "videoFrameBound": JSON.stringify(
+                iframeContainer.getBoundingClientRect()
+            )
+        }).then(resolve);
     }
 
     function setVideoFrameBoundAsBefore() {
@@ -100,8 +206,6 @@ import "../css/style.css";
 
             if (info && info.videoFrameBound)
                 bound = JSON.parse(info.videoFrameBound)
-
-            // alert("save video frame as before")
 
             if (bound && bound.height > 30) {
                 iframeContainer.style.top = bound.top.toString() + "px";
@@ -114,7 +218,7 @@ import "../css/style.css";
         });
     }
 
-    function isInsertableVideoLink(videoLink) {
+    function isSupportedVideoLink(videoLink) {
         return videoLink.href.indexOf("https://www.youtube.com/watch") === 0
             && !videoLink.href.includes("t=")
             || videoLink.href.indexOf("https://www.bilibili.com") === 0
@@ -131,12 +235,12 @@ import "../css/style.css";
             videoLinks = Array.from(document.querySelectorAll("a"));
 
             let urls = videoLinks.reduce(function (result, videoLink) {
-                if (isInsertableVideoLink(videoLink)) {
+                if (isSupportedVideoLink(videoLink)) {
                     if (!result.includes(videoLink.href) || videoLink.querySelector("img")) {
                         let container = document.createElement("div");
                         container.className = "instantYoutubeButtonContainer";
 
-                        let shadowRoot = container.attachShadow({mode: 'open'});
+                        let shadowRoot = container.attachShadow({ mode: 'open' });
                         shadowRoot.innerHTML = `<style>
                                                 :host {
                                                     display: flex;
@@ -188,7 +292,7 @@ import "../css/style.css";
                             videoLink.parentNode.insertBefore(container, videoLink.nextSibling);
                             result.push(videoLink.href);
                             logoUrlMap.set(videoLink, container);
-                            urlButtonMap.set(videoLink.href, {"videoLink": videoLink, "button": button});
+                            urlButtonMap.set(videoLink.href, { "videoLink": videoLink, "button": button });
                         }
                     }
                 }
@@ -209,7 +313,7 @@ import "../css/style.css";
         browser.runtime.sendMessage({
             type: "changeVideoTime",
             url: url[0],
-            time: url[1]
+            time: url.length > 1 ? url[1] : 0
         });
     }
 
@@ -225,13 +329,12 @@ import "../css/style.css";
                 && src === iframe.src) return;
 
             button.firstChild.style.fill = "#DD0000";
-
         } else {
             if (href.includes("av")) {
                 src = "//player.bilibili.com/player.html?aid=" + href.split("av")[1].split("/")[0];
             } else {
-                if (href.includes("?from"))
-                    href = href.split("?from")[0];
+                if (href.includes("?"))
+                    href = href.split("?")[0];
                 src = href.split("/");
                 src = "//player.bilibili.com/player.html?bvid="
                     + src[src.indexOf("video") + 1];
@@ -244,16 +347,11 @@ import "../css/style.css";
 
         currentPlayButton = button;
 
-        iframe.setAttribute("src", src);
-        document.body.insertBefore(iframeContainer, document.body.childNodes[0]);
-
-        if (iframeContainer.getBoundingClientRect().height < 30) {
-            iframeContainer.style.height = "50%";
-        }
+        makeVideo(src);
     }
 
     function keyMomentsHandler() {
-        new MutationObserver(function() {
+        new MutationObserver(function () {
             try {
                 let videoLinks = Array.from(document.querySelectorAll("a"));
                 for (let i = 0; i < videoLinks.length; i++) {
@@ -282,28 +380,38 @@ import "../css/style.css";
                             buttonClickHandler(urlButton.videoLink, urlButton.button);
 
                             let timeout = previousIframeSrc && previousIframeSrc.includes(url.split("v=")[1]) ? 0 : 1000;
-                            window.setTimeout(() => { changeVideoTime(videoLink.href) }, timeout);
+                            window.setTimeout(() => {
+                                changeVideoTime(videoLink.href)
+                            }, timeout);
                         }
                     }
                 }
-            } catch (e) {
-                console.log(e);
+            } catch (error) {
+                console.log(error);
             }
-        }).observe(document, {childList: true, subtree: true});
+        }).observe(document, { childList: true, subtree: true });
     }
 
-    window.addEventListener('beforeunload', function () {
-        if (document.getElementsByClassName("instantYoutubeVideoContainer").length > 0)
-            saveVideoFrame();
+    function removeVideo() {
+        if (document.getElementsByClassName(
+            "instantYoutubeVideoContainer").length > 0) {
+            saveVideoFrame(() => {
+                // changeVideoTime(iframe.src);
+                closeLogo.style.display = "none";
+                iframe.src = null;
+                iframeContainer.parentNode.removeChild(iframeContainer);
+            });
+        }
+    }
+
+    window.addEventListener('beforeunload', () => {
+        removeVideo();
     });
 
-    window.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && iframeContainer.parentNode) {
-            iframe.src = null;
-            saveVideoFrame();
-            iframeContainer.parentNode.removeChild(iframeContainer);
-        }
-    }, true);
+    window.addEventListener("keydown", (event) => {
+        if (event.key === "Escape")
+            removeVideo();
+    });
 
     function insertVideoViewCount(message) {
         if (message.type === "viewCount") {
@@ -328,16 +436,33 @@ import "../css/style.css";
 
     browser.runtime.onMessage.addListener(insertVideoViewCount);
 
-    function main(){
+    function main() {
         createVideoPanel();
+        // addClickEventListenerToThumbnails();
         insertPlayButtons();
         keyMomentsHandler();
     }
+
     main();
 
     window.onload = () => {
-        if (document.getElementsByClassName(
-            "instantYoutubeButtonContainer").length === 0)
-            insertPlayButtons();
+      var eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
+      var eventer = window[eventMethod];
+      var messageEvent = eventMethod == "attachEvent" ? "onmessage" : "message";
+
+      eventer(messageEvent, function(e) {
+        if (e.message === 'removeVideo' || e.data === 'removeVideo')
+          removeVideo();
+      },false);
+
+      if (document.getElementsByClassName(
+          "instantYoutubeButtonContainer").length === 0)
+          insertPlayButtons();
     }
+
+    window.setInterval(() => {
+      if (!isSelectable(document.activeElement) && window.getSelection().toString().length === 0) {
+        iframe.contentWindow.postMessage({'focus': true}, '*');
+      }
+    }, 1000);
 })();

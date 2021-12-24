@@ -1375,7 +1375,7 @@ var __webpack_exports__ = {};
                     video.play();
                 }
             })();`;
-     }
+    }
 
     browser.runtime.onMessage.addListener(
         function (message, sender) {
@@ -1443,7 +1443,6 @@ var __webpack_exports__ = {};
         xmlhttp.send();
     }
 })();
-
 })();
 
 /******/ })()

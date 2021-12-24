@@ -11,7 +11,7 @@
                     video.play();
                 }
             })();`;
-     }
+    }
 
     browser.runtime.onMessage.addListener(
         function (message, sender) {
