@@ -1,24 +1,7 @@
 let video = null, 
     neverPlayed = true;
-
-let isVideoPlaying = function(video) {
-    return video !== null && video.currentTime > 0 && !video.paused &&
-    !video.ended && video.readyState > 2;
-};
-
-let isSelectable = function(element) {
-    var unselectableTypes;
-    if (!(element instanceof Element)) {
-        return false;
-    }
-
-    unselectableTypes = ["button", "checkbox", "color",
-        "file", "hidden", "image", "radio", "reset", "submit"];
-    return (element.nodeName.toLowerCase() === "input" &&
-        unselectableTypes.indexOf(element.type) === -1) ||
-        element.nodeName.toLowerCase() === "textarea" ||
-        element.isContentEditable;
-}
+    
+import Util from "./util";
 
 new MutationObserver(() => {
   try {
@@ -47,9 +30,8 @@ new MutationObserver(() => {
 // });
 
 window.addEventListener("keydown", function (e) {
-  console.log(window.location.href);
   const activeElement = document.activeElement;
-  if (isSelectable(activeElement)) {
+  if (Util.isSelectable(activeElement)) {
       return;
   }
 
@@ -75,7 +57,7 @@ window.addEventListener("keydown", function (e) {
         e.stopImmediatePropagation();
         e.preventDefault();
 
-        if (isVideoPlaying(video)) {
+        if (Util.isVideoPlaying(video)) {
             video.pause();
             video.blur();
         } else {

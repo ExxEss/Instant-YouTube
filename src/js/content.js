@@ -1,5 +1,7 @@
 "use strict";
 import "../css/style.css";
+import Util from "./util";
+
 
 (function () {
     if (document.location.href.includes('youtube') || 
@@ -36,20 +38,6 @@ import "../css/style.css";
     const supportedDomains = {
         youtube: "youtube.com",
         bilibili: "bilibili.com"
-    }
-
-    function isSelectable(element) {
-      var unselectableTypes;
-      if (!(element instanceof Element)) {
-          return false;
-      }
-    
-      unselectableTypes = ["button", "checkbox", "color",
-          "file", "hidden", "image", "radio", "reset", "submit"];
-      return (element.nodeName.toLowerCase() === "input" &&
-          unselectableTypes.indexOf(element.type) === -1) ||
-          element.nodeName.toLowerCase() === "textarea" ||
-          element.isContentEditable;
     }
 
     function createVideoPanel() {
@@ -461,7 +449,7 @@ import "../css/style.css";
     }
 
     window.setInterval(() => {
-      if (!isSelectable(document.activeElement) && window.getSelection().toString().length === 0) {
+      if (!Util.isSelectable(document.activeElement) && window.getSelection().toString().length === 0) {
         iframe.contentWindow.postMessage({'focus': true}, '*');
       }
     }, 1000);
