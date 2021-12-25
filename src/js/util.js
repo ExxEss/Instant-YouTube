@@ -1,22 +1,38 @@
 const Util = {
   isVideoPlaying: (video) => {
-    return video !== null && video.currentTime > 0 && !video.paused &&
-    !video.ended && video.readyState > 2;
+    return (
+      video !== null &&
+      video.currentTime > 0 &&
+      !video.paused &&
+      !video.ended &&
+      video.readyState > 2
+    );
   },
 
   isSelectable: (element) => {
-    var unselectableTypes;
+    let unselectableTypes;
     if (!(element instanceof Element)) {
-        return false;
+      return false;
     }
 
-    unselectableTypes = ["button", "checkbox", "color",
-        "file", "hidden", "image", "radio", "reset", "submit"];
-    return (element.nodeName.toLowerCase() === "input" &&
+    unselectableTypes = [
+      "button",
+      "checkbox",
+      "color",
+      "file",
+      "hidden",
+      "image",
+      "radio",
+      "reset",
+      "submit",
+    ];
+    return (
+      (element.nodeName.toLowerCase() === "input" &&
         unselectableTypes.indexOf(element.type) === -1) ||
-        element.nodeName.toLowerCase() === "textarea" ||
-        element.isContentEditable;
-  }
-}
+      element.nodeName.toLowerCase() === "textarea" ||
+      element.isContentEditable
+    );
+  },
+};
 
 export default Util;
