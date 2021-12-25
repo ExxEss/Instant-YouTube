@@ -1,3 +1,3 @@
 # Instant-Youtube
 
-Watching youtube videos directly on Google and other search engines.
+Watch youtube videos directly on Google and other search engines.
