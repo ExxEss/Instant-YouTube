@@ -1,13 +1,12 @@
 "use strict";
 import "../css/style.css";
 import Util from "./util";
-
+import Browser from "webextension-polyfill";
 
 (function () {
     if (document.location.href.includes('youtube') || 
     document.location.href.includes('bilibili')) return;
     
-    const browser = require("webextension-polyfill");
     let videoLinks,
         iframe,
         iframeContainer,
@@ -22,23 +21,6 @@ import Util from "./util";
         logoUrlMap = new Map(),
         urlButtonMap = new Map(),
         processedLinks = [];
-
-    const PLAYBUTTON =
-        `
-        <svg height="24" focusable="false" xmlns="http://www.w3.org/2000/svg" 
-        viewBox="0 0 24 24" style="opacity:100%;fill:white;
-        margin: 22px 50px 20px 46px">
-            <path d="M12 2C6.48 2 2 
-                6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 
-                2zm-2 14.5v-9l6 4.5-6 4.5z">
-            </path>
-        </svg>
-    `
-
-    const supportedDomains = {
-        youtube: "youtube.com",
-        bilibili: "bilibili.com"
-    }
 
     const createVideoPanel = () => {
         iframe = document.createElement("iframe");
@@ -56,8 +38,7 @@ import Util from "./util";
         closeLogo.className = "closeLogo";
         iframeContainer.className = "instantYoutubeVideoContainer";
         closeLogo.className = "closeLogo";
-        closeLogo.src = browser.extension.getURL('images/closeLogo.png');
-
+        closeLogo.src = Browser.extension.getURL('images/closeLogo.png');
 
         closeDot.appendChild(closeLogo);
         dotContainer.appendChild(closeDot);
@@ -107,43 +88,7 @@ import Util from "./util";
             iframeContainer.style.top =
                 (mousePosition.y + offset[1]) + 'px';
         }
-    }, true);
-
-    // function addClickEventListenerToThumbnails() {
-    //     let thumbnail = getVideoLinksWithThumbnail();
-
-    //     for (let link of thumbnail) {
-    //         let thumbnail = !!link.querySelector("g-img")
-    //             ? link.querySelector("g-img")
-    //             : link.querySelector("img");
-
-    //         thumbnail.parentElement.addEventListener("click",
-    //             event => {
-    //                 event.preventDefault();
-    //                 event.stopImmediatePropagation();
-    //                 makeVideo(getEmbeddedVideoUrl(link.href));
-    //                 insertPlayButton(thumbnail);
-    //                 changeVideoButtonColor(thumbnail.parentElement);
-    //             }, true);
-    //     }
-    // }
-
-    // function insertPlayButton(element) {
-    //     if (!element.querySelector("svg"))
-    //         element.childNodes[1].innerHTML = PLAYBUTTON;
-    // }
-
-    // function changeVideoButtonColor(element) {
-    //     let button = element.querySelector("svg");
-    //     if (!!button)
-    //         button.style.fill = "red";
-    // }
-
-    // function getVideoLinksWithThumbnail() {
-    //     return Array.from(document.querySelectorAll("a"))
-    //         .filter(link => isSupportedVideoLink(link))
-    //         .filter(link => link.querySelector("img"));
-    // }
+    }, true);    
 
     const makeVideo = (src) => {
         iframe.setAttribute("src", src);
@@ -154,34 +99,8 @@ import Util from "./util";
             iframeContainer.style.height = "50%";
     }
 
-    // function getEmbeddedVideoUrl(href) {
-    //     if (href.includes(supportedDomains.youtube))
-    //         return getYoutubeEmbeddedVideoUrl(href);
-    //     else if (href.includes(supportedDomains.bilibili)) {
-    //         return getBilibiliEmbeddedVideoUrl(href);
-    //     }
-    // }
-
-    // function getYoutubeEmbeddedVideoUrl(url) {
-    //     return url.split("&")[0]
-    //         .replace("watch?v=", "embed/") + "?autoplay=1";
-    // }
-
-    // function getBilibiliEmbeddedVideoUrl(href) {
-    //     if (href.includes("av")) {
-    //         return "//player.bilibili.com/player.html?aid="
-    //             + href.split("av")[1].split("/")[0];
-    //     } else {
-    //         if (href.includes("?"))
-    //             href = href.split("?")[0];
-    //         href = href.split("/");
-    //         return "//player.bilibili.com/player.html?bvid="
-    //             + href[href.indexOf("video") + 1];
-    //     }
-    // }
-
     const saveVideoFrame = (resolve) => {
-        browser.storage.sync.set({
+        Browser.storage.sync.set({
             "videoFrameBound": JSON.stringify(
                 iframeContainer.getBoundingClientRect()
             )
@@ -189,7 +108,7 @@ import Util from "./util";
     }
 
     const setVideoFrameBoundAsBefore = () => {
-        browser.storage.sync.get(['videoFrameBound']).then(function (info) {
+        Browser.storage.sync.get(['videoFrameBound']).then(function (info) {
             let bound;
 
             if (info && info.videoFrameBound)
@@ -288,7 +207,7 @@ import Util from "./util";
             }, []);
 
             if (!document.location.href.includes("www.youtube.com"))
-                browser.runtime.sendMessage({
+                Browser.runtime.sendMessage({
                     type: "viewCount",
                     urls: urls
                 });
@@ -298,7 +217,7 @@ import Util from "./util";
     const changeVideoTime = (url) => {
         url = url.split("&t=");
 
-        browser.runtime.sendMessage({
+        Browser.runtime.sendMessage({
             type: "changeVideoTime",
             url: url[0],
             time: url.length > 1 ? url[1] : 0
@@ -356,7 +275,7 @@ import Util from "./util";
                             e.preventDefault();
                             e.stopImmediatePropagation();
 
-                            /* Google search could change href after clicking for Firefox */
+                            /* Google search could change href after clicking in Firefox */
                             videoLink.href = href;
 
                             let url = href.split("&t")[0],
@@ -384,7 +303,6 @@ import Util from "./util";
         if (document.getElementsByClassName(
             "instantYoutubeVideoContainer").length > 0) {
             saveVideoFrame(() => {
-                // changeVideoTime(iframe.src);
                 closeLogo.style.display = "none";
                 iframe.src = null;
                 iframeContainer.parentNode.removeChild(iframeContainer);
@@ -422,11 +340,10 @@ import Util from "./util";
         }
     }
 
-    browser.runtime.onMessage.addListener(insertVideoViewCount);
+    Browser.runtime.onMessage.addListener(insertVideoViewCount);
 
     const main = () => {
         createVideoPanel();
-        // addClickEventListenerToThumbnails();
         insertPlayButtons();
         keyMomentsHandler();
     }
