@@ -1,6 +1,7 @@
+import Browser from "webextension-polyfill";
+
 (function () {
   require("crx-hotreload");
-  let browser = require("webextension-polyfill");
 
   const changeVideoTime = (currentTime) => {
     return `
@@ -13,10 +14,10 @@
             })();`;
   };
 
-  browser.runtime.onMessage.addListener((message, sender) => {
+  Browser.runtime.onMessage.addListener((message, sender) => {
     if (message.type === "viewCount") getViewsInfoByUrls(message.urls, sender);
     else if (message.type === "changeVideoTime") {
-      browser.tabs.executeScript(sender.tab.id, {
+      Browser.tabs.executeScript(sender.tab.id, {
         code: changeVideoTime(message.time),
         allFrames: true,
       });
@@ -39,7 +40,7 @@
                   index = script.indexOf("simpleText"),
                   subscript = script.substr(index - 2, 40),
                   viewCount = subscript.split('"')[3];
-                browser.tabs.sendMessage(sender.tab.id, {
+                Browser.tabs.sendMessage(sender.tab.id, {
                   type: "viewCount",
                   url: url,
                   viewCount: viewCount,
@@ -50,7 +51,7 @@
                   ? viewCount.innerText
                   : dom.getElementsByClassName("video-data")[0].innerText;
 
-                browser.tabs.sendMessage(sender.tab.id, {
+                Browser.tabs.sendMessage(sender.tab.id, {
                   type: "viewCount",
                   url: url,
                   viewCount: viewCount.includes("弹幕")
@@ -66,7 +67,7 @@
           console.log(e);
         }
       } else {
-        browser.tabs.sendMessage(sender.tab.id, {
+        Browser.tabs.sendMessage(sender.tab.id, {
           type: "viewCount",
           url: url,
           viewCount: null,
