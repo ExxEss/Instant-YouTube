@@ -122,9 +122,9 @@ import "../css/style.css";
     }, true);
 
     function addClickEventListenerToThumbnails() {
-        let thumbnail = getVideoLinksWithThumbnail();
+        let thumbnailLinks = getVideoLinksWithThumbnail();
 
-        for (let link of thumbnail) {
+        for (let link of thumbnailLinks) {
             let thumbnail = !!link.querySelector("g-img")
                 ? link.querySelector("g-img")
                 : link.querySelector("img");
@@ -133,11 +133,22 @@ import "../css/style.css";
                 event => {
                     event.preventDefault();
                     event.stopImmediatePropagation();
+                    changePlayIconColor(thumbnailLinks);
+                    
+                    if (!!link.querySelector("svg"))
+                      link.querySelector("svg").style.fill = "red";
+
                     makeVideo(getEmbeddedVideoUrl(link.href));
                     insertPlayButton(thumbnail);
                     changeVideoButtonColor(thumbnail.parentElement);
                 }, true);
         }
+    }
+
+    function changePlayIconColor(thumbnailLinks) {
+      for (const link of thumbnailLinks)
+        if (!!link.querySelector("svg"))
+          link.querySelector("svg").style.fill = "white";
     }
 
     function insertPlayButton(element) {
@@ -438,7 +449,7 @@ import "../css/style.css";
 
     function main() {
         createVideoPanel();
-        // addClickEventListenerToThumbnails();
+        addClickEventListenerToThumbnails();
         insertPlayButtons();
         keyMomentsHandler();
     }
