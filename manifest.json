@@ -6,18 +6,16 @@
   "homepage_url": "https://github.com/ExxEss/Instant-Youtube",
   "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self';",
   "incognito": "spanning",
-
   "browser_specific_settings": {
     "gecko": {
       "id": "yugxie@deve.com"
     },
-
     "edge": {
       "browser_action_next_to_addressbar": true
     }
   },
-
   "permissions": [
+    "contextMenus",
     "nativeMessaging",
     "webNavigation",
     "storage",
@@ -25,38 +23,51 @@
     "activeTab",
     "<all_urls>"
   ],
-
   "background": {
     "scripts": [
       "dist/src/js/background.js"
     ],
     "persistent": true
   },
-
   "browser_action": {
     "default_icon": "images/Logo.png"
   },
-
   "content_scripts": [
     {
-      "matches": ["*://*/*"],
+      "matches": [
+        "*://*/*"
+      ],
       "js": [
         "dist/src/js/content.js"
       ],
       "run_at": "document_idle"
     },
-
     {
-      "matches": ["https://www.youtube.com/embed/*"],
-      "js": ["dist/src/js/iframe.js"],
-      "run_at": "document_start",
+      "matches": [
+        "https://www.youtube.com/embed/*"
+      ],
+      "js": [
+        "dist/src/js/iframe.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "dist/src/js/href.js"
+      ],
+      "run_at": "document_idle",
       "all_frames": true
     }
   ],
-
+  "icons": {
+    "128": "images/Logo.png"
+  },
   "web_accessible_resources": [
     "images/*.png"
   ],
-
   "manifest_version": 2
 }
