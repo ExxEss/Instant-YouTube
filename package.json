@@ -12,6 +12,7 @@
   "author": "Xie Yuguo",
   "license": "MIT",
   "devDependencies": {
+    "@types/node": "^17.0.35",
     "css-loader": "^6.2.0",
     "style-loader": "^3.2.1",
     "webextension-polyfill": "^0.8.0",
@@ -19,6 +20,8 @@
     "webpack-cli": "^4.7.2"
   },
   "dependencies": {
-    "crx-hotreload": "^1.0.6"
+    "canvas": "^2.9.1",
+    "linkedom": "^0.14.9",
+    "perf_hooks": "0.0.1"
   }
 }

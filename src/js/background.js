@@ -1,149 +1,98 @@
-(() => {
-  // require('crx-hotreload');
-  const MAX_VIDEOS = 30,
-    MAX_PINNED = 30;
-  SYNC_INTERVAL = 60000;
+import Browser from 'webextension-polyfill';
+import { DOMParser, parseHTML } from 'linkedom';
 
-  let browser = require('webextension-polyfill');
+(() => {
+  const MAX_VIDEOS = 15,
+    MAX_PINNED = 15,
+    SYNC_INTERVAL = 60000,
+    PINNED_OPTION_ENABLED = false,
+    DEFAULT_LEN = 30,
+    MAX_LEN = 35;
+
   let history = {};
-  browser.storage.local.get(['videoHistory'])
+
+  // const onLastError = (error) => { console.log(error); }
+  const onLastError = () => void chrome.runtime.lastError;
+
+  Browser.storage.local.get(['videoHistory'])
     .then(obj => {
       history = obj.videoHistory
         ? obj.videoHistory
         : history;
-    });
+    }).catch(onLastError);
 
   const syncHistory = () => {
-    browser.storage.local.set({
+    Browser.storage.local.set({
       videoHistory: history
     });
   }
 
   const createContextMenus = () => {
-    browser.contextMenus.removeAll().then(() => {
-      browser.contextMenus.create({
+    syncHistory();
+
+    Browser.contextMenus.removeAll().then(() => {
+      chrome.contextMenus.create({
         title: 'Instant Play',
         id: 'Parent',
         contexts: ['all'],
-      });
+      }, () => void chrome.runtime.lastError);
+
+      chrome.contextMenus.create({
+        title: 'Latest',
+        parentId: 'Parent',
+        id: 'Latest',
+        enabled: false,
+        contexts: ['all']
+      }, () => void chrome.runtime.lastError);
 
       if (Object.keys(history).length > 0) {
-        const pinned = history.pinned;
-
-        browser.contextMenus.create({
-          title: 'Pinned',
-          parentId: 'Parent',
-          id: 'Pinned',
-          contexts: ['all']
-        });
-
-        if (pinned.length > 0) {
-          for (
-            let i = 0;
-            i < Math.min(MAX_PINNED, pinned.length);
-            i++
-          ) {
-            const id = pinned[i].url + pinned[i].title;
-
-            browser.contextMenus.create({
-              title: pinned[i].title,
-              parentId: 'Pinned',
-              id: id,
-              contexts: ['all']
-            });
-
-            browser.contextMenus.create({
-              title: 'Play',
-              parentId: id,
-              contexts: ['all'],
-              onclick: (_, tab) => {
-                play(pinned[i], tab);
-                createContextMenus();
-              }
-            });
-
-            browser.contextMenus.create({
-              title: 'Unpin',
-              parentId: id,
-              contexts: ['all'],
-              onclick: () => {
-                unpin(pinned[i]);
-                createContextMenus();
-              }
-            });
-          }
-        } else {
-          browser.contextMenus.update(
-            'Pinned',
-            { enabled: false }
-          );
-        }
-      }
-
-      if (Object.keys(history).length > 0) {
-        const all = history.all;
-
-        chrome.contextMenus.create({
-          type: 'separator',
-          parentId: 'Parent',
-          contexts: ['all']
-        });
-
-        for (
-          let i = 0;
-          i < Math.min(MAX_VIDEOS,
-            all.length);
-          i++
-        ) {
-          const _id = all[i].title + all[i].url;
-
-          browser.contextMenus.create({
-            title: all[i].title,
+        let all = history.all;
+        if (all.length > 0) {
+          chrome.contextMenus.create({
+            type: 'separator',
             parentId: 'Parent',
-            id: _id,
+            id: 'Separator_latest',
             contexts: ['all']
-          });
+          }, () => void chrome.runtime.lastError);
 
-          browser.contextMenus.create({
-            title: 'Play',
-            parentId: _id,
-            contexts: ['all'],
-            onclick: (_, tab) => {
-              play(all[i], tab);
-              createContextMenus();
-            },
-          });
+          for (let i = 0;
+            i < Math.min(MAX_VIDEOS,
+              all.length); i++) {
+            const _id = all[i].url;
 
-          browser.contextMenus.create({
-            title: 'Pin',
-            parentId: _id,
-            contexts: ['all'],
-            onclick: () => {
-              pin(all[i]);
-              createContextMenus();
-            },
-          });
+            chrome.contextMenus.create({
+              title: trimTitle(all[i].title),
+              parentId: 'Parent',
+              id: _id,
+              contexts: ['all']
+            }, () => void chrome.runtime.lastError);
 
-          browser.contextMenus.create({
-            title: "Pin && Play",
-            parentId: _id,
-            contexts: ['all'],
-            onclick: (_, tab) => {
-              pin(all[i]);
-              play(all[i], tab);
-              createContextMenus();
-            },
-          });
+            const contextClick = (info, tab) => {
+              const { menuItemId } = info
+              if (menuItemId === _id) {
+                play(all[i], tab);
+                createContextMenus();
+              } else if (menuItemId === 'Clear') {
+                history['all'] = [];
+                createContextMenus();
+              }
+            }
+            chrome.contextMenus.onClicked.addListener(contextClick);
+          }
 
-          browser.contextMenus.create({
-            title: 'Remove',
-            parentId: _id,
-            contexts: ['all'],
-            onclick: () => {
-              removeAll(all[i]);
-              createContextMenus();
-            },
-          });
+          chrome.contextMenus.create({
+            type: 'separator',
+            parentId: 'Parent',
+            id: 'Separator_clear',
+            contexts: ['all']
+          }, () => void chrome.runtime.lastError);
+
+          chrome.contextMenus.create({
+            title: 'Clear all',
+            parentId: 'Parent',
+            id: 'Clear',
+            contexts: ['all']
+          }, () => void chrome.runtime.lastError);
         }
       }
     });
@@ -152,24 +101,22 @@
   createContextMenus();
 
   const play = (entry, tab) => {
-    browser.tabs.query({}).then((tabs) => {
+    Browser.tabs.query({}).then((tabs) => {
       for (const _tab of tabs) {
         if (_tab.id !== tab.id) {
-          browser.tabs.sendMessage(
+          Browser.tabs.sendMessage(
             _tab.id,
-            { type: 'closeVideo' },
-            null
-          );
+            { type: 'closeVideo' })
+            .then(_ => {
+            }).catch(onLastError);
         } else {
-          browser.tabs.sendMessage(
-            tab.id,
-            {
-              type: 'dispalyVideo',
-              url: entry.url
-            },
-            null
-          );
-          add(entry.url);
+          Browser.tabs.sendMessage(
+            tab.id, {
+            type: 'dispalyVideo',
+            url: entry.url
+          }).then(_ => {
+            add(entry.url);
+          }).catch(onLastError);;
         }
       }
     });
@@ -199,59 +146,54 @@
 
   const changeVideoTime = (currentTime) => {
     return `
-            (function() {
-                let video = document.querySelector('video');
-                if (video !== null) {
-                    video.currentTime = ${currentTime}; 
-                    video.play();
-                }
-            })();`;
+      (function() {
+          let video = document.querySelector('video');
+          if (video !== null) {
+              video.currentTime = ${currentTime}; 
+              video.play();
+          }
+      })();`;
   };
 
-  const getViewsInfoByUrls = (urls, sender) => {
+  const getViewsInfoByUrls = async (urls, sender) => {
     for (let url of urls) {
       if (
-        (url !== null && url.includes('www.youtube.com')) ||
+        (url !== null &&
+          url.includes('www.youtube.com')) ||
         url.includes('www.bilibili.com') ||
         url.includes('m.bilibili.com')
       ) {
+        const document = await getSourceAsDOM(url);
         try {
-          getSourceAsDOM(url, (document) => {
-            try {
-              if (url.includes('www.youtube.com')) {
-                let scripts = document.querySelectorAll('script'),
-                  script = scripts[scripts.length - 5].innerText,
-                  index = script.indexOf('simpleText'),
-                  subscript = script.substr(index - 2, 40),
-                  viewCount = subscript.split('"')[3];
-                browser.tabs.sendMessage(sender.tab.id, {
-                  type: 'viewCount',
-                  url: url,
-                  viewCount: viewCount,
-                });
-              } else {
-                let viewCount = document.getElementsByClassName('l-con-bar')[0];
-                viewCount = viewCount
-                  ? viewCount.innerText
-                  : document.getElementsByClassName('video-data')[0].innerText;
-
-                browser.tabs.sendMessage(sender.tab.id, {
-                  type: 'viewCount',
-                  url: url,
-                  viewCount: viewCount.includes('弹幕')
-                    ? viewCount.split('弹幕')[0] + '弹幕'
-                    : viewCount,
-                });
-              }
-            } catch (e) {
-              console.log(e, document.body);
-            }
+          let viewCount;
+          if (url.includes('www.youtube.com')) {
+            let scripts =
+              document.querySelectorAll('script'),
+              script = scripts[scripts.length - 5].innerText,
+              index = script.indexOf('simpleText'),
+              subscript = script.substr(index - 2, 40);
+            viewCount = subscript.split('"')[3];
+          } else {
+            viewCount =
+              document.getElementsByClassName(
+                'l-con-bar'
+              )[0];
+            viewCount = viewCount
+              ? viewCount.innerText
+              : document.getElementsByClassName(
+                'video-data'
+              )[0].innerText;
+          }
+          Browser.tabs.sendMessage(sender.tab.id, {
+            type: 'viewCount',
+            url: url,
+            viewCount: viewCount,
           });
         } catch (e) {
-          console.log(e);
+          console.log(e, document.body);
         }
       } else {
-        browser.tabs.sendMessage(sender.tab.id, {
+        Browser.tabs.sendMessage(sender.tab.id, {
           type: 'viewCount',
           url: url,
           viewCount: null,
@@ -260,29 +202,25 @@
     }
   };
 
-  const getVideoTitle = (url, callback) => {
-    try {
-      getSourceAsDOM(url, (document) => {
-        callback(document.title);
-      });
-    } catch (e) {
-      console.error('Failed to retrieve video title');
-    }
-  };
+  const getSourceAsDOM = async (url) => {
+    const headers = new Headers({
+      Accept: "application/json," +
+        "application/xml," +
+        "text/plain, text/html"
+    });
 
-  const getSourceAsDOM = (url, callback) => {
-    let xmlhttp = new XMLHttpRequest();
-    let parser = new DOMParser();
-    xmlhttp.open('GET', url, true);
-    xmlhttp.onreadystatechange = () => {
-      if (
-        xmlhttp.readyState === XMLHttpRequest.DONE &&
-        xmlhttp.status === 200
-      ) {
-        callback(parser.parseFromString(xmlhttp.responseText, 'text/html'));
-      }
-    };
-    xmlhttp.send();
+    const response = await fetch(url, {
+      headers: headers,
+      method: "GET",
+      mode: 'cors'
+    });
+
+    if (!response.ok) {
+      console.log('Failed to fetch');
+    }
+    const html = await response.text();
+    const doc = await parseHTML(html);
+    return doc.document;
   };
 
   const addHistoryEntry = (entry) => {
@@ -303,12 +241,11 @@
     createContextMenus();
   }
 
-  const add = (url) => {
-    getVideoTitle(url, (title) => {
-      addHistoryEntry({
-        url: url,
-        title: trimTitle(title)
-      });
+  const add = async (url) => {
+    const document = await getSourceAsDOM(url);
+    addHistoryEntry({
+      url: url,
+      title: document.title
     });
   }
 
@@ -316,15 +253,31 @@
     return /^[\u4E00-\u9FA5]+$/.test(str);
   }
 
+  function countChinese(str) {
+    return (str.match(/[\u4E00-\u9FA5]/g) || []).length;
+  }
+
   const trimTitle = (title) => {
     title = title.trim().replace(' - YouTube', '');
-    const len = 25;
-    return title.length < len
+    const len = DEFAULT_LEN - Math.ceil(
+      countChinese(title.substring(0, DEFAULT_LEN)) / 2
+    );
+    return title.length <= len
       ? title
       : title.substring(0, len) + ' ...';
   }
 
-  browser.runtime.onMessage.addListener(
+  const nextSpaceIndex = (curIndex, str) => {
+    for (
+      let i = curIndex;
+      i < Math.min(MAX_LEN, str.length); i++
+    ) {
+      if (str[i] === ' ') return i;
+    }
+    return curIndex;
+  }
+
+  Browser.runtime.onMessage.addListener(
     (message, sender) => {
       switch (message.type) {
         case 'addHistory':
@@ -335,24 +288,23 @@
           getViewsInfoByUrls(message.urls, sender);
           break;
         case 'getFaviconURL':
-          browser.tabs.sendMessage(
+          Browser.tabs.sendMessage(
             sender.tab.id,
-            { type: 'favicon', url: sender.tab.favIconUrl },
-            null
-          );
+            { type: 'favicon', url: sender.tab.favIconUrl }
+          ).then(_ => { }).catch(onLastError);
           break;
         case 'changeVideoTime':
-          browser.tabs.executeScript(sender.tab.id, {
+          Browser.scripting.executeScript(sender.tab.id, {
             code: changeVideoTime(message.time),
             allFrames: true,
           });
           break;
         case 'closeOthers':
-          browser.tabs.query({}).then((tabs) => {
+          Browser.tabs.query({}).then((tabs) => {
             for (const tab of tabs) {
               if (tab.id !== sender.tab.id) {
-                browser.tabs.sendMessage(tab.id,
-                  { type: 'closeVideo' }, null);
+                Browser.tabs.sendMessage(tab.id,
+                  { type: 'closeVideo' }).then(_ => { }).catch(onLastError);
               }
             }
           });

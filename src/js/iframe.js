@@ -1,6 +1,6 @@
-(() => {
-  let browser = require('webextension-polyfill');
+import Browser from 'webextension-polyfill';
 
+(() => {
   let video = null,
     neverPlayed = true;
 
@@ -23,9 +23,12 @@
       element.isContentEditable;
   }
 
-  // setInterval(() => {
-  //   video.requestPictureInPicture();
-  // }, 1000);
+  // video.addEventListener("loadedmetadata", function (e) {
+  //   parent.postMessage('resizeVideo', {
+  //     width: this.videoWidth,
+  //     height: this.videoHeight
+  //   });
+  // }, false);
 
   new MutationObserver(() => {
     try {

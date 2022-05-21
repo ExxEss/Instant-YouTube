@@ -1,35 +1,28 @@
 {
   "name": "Instant Youtube",
-  "version": "0.1.0",
-  "description": "Watch videos on search engines directly",
+  "version": "1.0",
+  "description": "Watch youtube videos anywhere",
   "author": "Xie Yuguo",
   "homepage_url": "https://github.com/ExxEss/Instant-Youtube",
-  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self';",
-  "incognito": "spanning",
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "yugxie@deve.com"
-    },
-    "edge": {
-      "browser_action_next_to_addressbar": true
-    }
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
   },
+  "incognito": "spanning",
   "permissions": [
     "contextMenus",
     "nativeMessaging",
-    "webNavigation",
     "storage",
     "tabs",
-    "activeTab",
+    "activeTab"
+  ],
+  "host_permissions": [
     "<all_urls>"
   ],
   "background": {
-    "scripts": [
-      "dist/src/js/background.js"
-    ],
-    "persistent": true
+    "service_worker": "dist/src/js/background.js",
+    "type": "module"
   },
-  "browser_action": {
+  "action": {
     "default_icon": "images/Logo.png"
   },
   "content_scripts": [
@@ -67,7 +60,14 @@
     "128": "images/Logo.png"
   },
   "web_accessible_resources": [
-    "images/*.png"
+    {
+      "resources": [
+        "images/*.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
   ],
-  "manifest_version": 2
+  "manifest_version": 3
 }

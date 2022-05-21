@@ -1,20 +1,15 @@
 'use strict';
-import '../css/style.css';
 
-(function () {
-  let browser = require('webextension-polyfill');
+import Browser from 'webextension-polyfill';
 
-  window.onload = () => {
-    if (document.location.href.includes('youtube.com/watch')) {
-      browser.storage.local.set({
-        lastVideoLink: getYoutubeEmbeddedVideoUrl(document.location.href),
-      });
-    }
-  };
+import {
+  buttonHTML,
+  playButtonHTML,
+  videoPanelStyle,
+  buttonContainerHTML
+} from './styleHTML';
 
-  // if (document.location.href.includes('youtube.com') ||
-  //   document.location.href.includes('bilibili.com')) return;
-
+(() => {
   let videoLinks,
     iframe,
     iframeContainer,
@@ -32,26 +27,12 @@ import '../css/style.css';
     urlButtonMap = new Map(),
     processedLinks = [];
 
-  let _src;
-
-  const PLAYBUTTON = `
-        <svg height='24' focusable='false' 
-        xmlns='http://www.w3.org/2000/svg' 
-        viewBox='0 0 24 24' style='opacity:100%;fill:white;
-        margin: 22px 50px 20px 46px'>
-            <path d='M12 2C6.48 2 2 
-                6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 
-                2zm-2 14.5v-9l6 4.5-6 4.5z'>
-            </path>
-        </svg>
-    `;
-
   const supportedDomains = {
     youtube: 'youtube.com',
     bilibili: 'bilibili.com',
   };
 
-  function isSelectable(element) {
+  const isSelectable = (element) => {
     let unselectableTypes;
     if (!(element instanceof Element)) {
       return false;
@@ -76,7 +57,7 @@ import '../css/style.css';
     );
   }
 
-  function createVideoPanel() {
+  const createVideoPanel = () => {
     iframe = document.createElement('iframe');
     closeDot = document.createElement('div');
     closeLogo = document.createElement('img');
@@ -94,21 +75,26 @@ import '../css/style.css';
     iframeContainer.className = 'instantYoutubeVideoContainer';
     videoPanel.className = 'videoPanel';
     closeLogo.className = 'closeLogo';
-    closeLogo.src = browser.extension.getURL('images/closeLogo.png');
+    closeLogo.src = chrome.runtime.getURL('images/closeLogo.png');
 
     closeDot.appendChild(closeLogo);
     dotContainer.appendChild(closeDot);
     controlBar.appendChild(dotContainer);
     iframeContainer.appendChild(controlBar);
     iframeContainer.appendChild(iframe);
-    videoPanel.appendChild(iframeContainer);
+
+    let shadowRoot = videoPanel.attachShadow({
+      mode: 'open'
+    });
+    shadowRoot.innerHTML = videoPanelStyle;
+    shadowRoot.appendChild(iframeContainer);
 
     iframe.setAttribute('title', 'Video player');
     iframe.setAttribute('frameborder', '0');
-    iframe.setAttribute(
-      'allow',
-      'accelerometer; autoplay; ' +
-      'clipboard-write; encrypted-media; gyroscope; picture-in-picture'
+    iframe.setAttribute('allow',
+      "accelerometer; autoplay;" +
+      "clipboard-write; encrypted-media;" +
+      "gyroscope; picture-in-picture"
     );
     iframe.setAttribute('allowfullscreen', '');
 
@@ -133,6 +119,7 @@ import '../css/style.css';
     controlBar.onmouseup = () => {
       mouseDown = false;
       globalMouseDown = false;
+      saveVideoFrame();
     };
 
     window.onmousedown = (e) => {
@@ -140,20 +127,31 @@ import '../css/style.css';
       globalOffset = [
         videoPanel.offsetLeft - e.clientX,
         videoPanel.offsetTop - e.clientY,
-        videoPanel.offsetLeft +
-        parseInt(videoPanel.style.width.replace('px', '')),
-        videoPanel.offsetTop +
-        parseInt(videoPanel.style.height.replace('px', '')),
+        videoPanel.offsetLeft + parseInt(
+          videoPanel.style.width.replace('px', '')
+        ),
+        videoPanel.offsetTop + parseInt(
+          videoPanel.style.height.replace('px', '')
+        ),
       ];
     };
 
     window.onmouseup = () => {
       globalMouseDown = false;
+      saveVideoFrame();
     };
 
     window.onmousemove = (e) => {
       const delta = 20;
       const bound = iframeContainer.getBoundingClientRect();
+
+      const docWidth = window.innerWidth ||
+        document.documentElement.clientWidth ||
+        document.body.clientWidth;
+
+      const docHeight = window.innerHeight ||
+        document.documentElement.clientHeight ||
+        document.body.clientHeight;
 
       const deltaLeft = bound.left - e.clientX,
         deltaRight = e.clientX - bound.right,
@@ -162,7 +160,8 @@ import '../css/style.css';
 
       let cursorStyle;
 
-      if (bound.left < e.clientX && bound.right > e.clientX) {
+      if (bound.left < e.clientX &&
+        bound.right > e.clientX) {
         if (deltaTop > 0 && deltaTop < delta)
           cursorStyle = 'n-resize';
         else if (deltaBottom > 0 && deltaBottom < delta)
@@ -182,47 +181,61 @@ import '../css/style.css';
       document.body.style.cursor = cursorStyle;
 
       if (mouseDown) {
-        videoPanel.style.left =
-          e.clientX + offset[0] + 'px';
+        const left = e.clientX + offset[0];
+        const top = e.clientY + offset[1];
 
-        videoPanel.style.top =
-          e.clientY + offset[1] + 'px';
+        if (0 < left && left < docWidth &&
+          0 < top && top < docHeight) {
+          videoPanel.style.left = left + 'px';
+          videoPanel.style.top = top + 'px';
+        }
       } else if (globalMouseDown) {
         if (
           document.body.style.cursor === 'w-resize') {
-          videoPanel.style.left =
-            e.clientX + globalOffset[0] + 'px';
+          const left = e.clientX + globalOffset[0];
 
-          videoPanel.style.width =
-            globalOffset[2] -
-            videoPanel.offsetLeft + 'px';
+          if (left > 0 && left < docWidth) {
+            videoPanel.style.left = left + 'px';
+
+            videoPanel.style.width =
+              globalOffset[2] - videoPanel.offsetLeft + 'px';
+          }
         } else if (
           document.body.style.cursor === 'e-resize'
         ) {
-          videoPanel.style.width =
-            e.clientX - 1.5 * delta -
-            videoPanel.offsetLeft + 'px';
+          const width = e.clientX + delta / 2 -
+            videoPanel.offsetLeft;
+
+          if (width > 100 && width < docWidth) {
+            videoPanel.style.width = width + 'px';
+          }
         } else if (
           document.body.style.cursor === 'n-resize'
         ) {
-          videoPanel.style.top =
-            e.clientY + globalOffset[1] + 'px';
+          const top = e.clientY + globalOffset[1];
 
-          videoPanel.style.height =
-            globalOffset[3] -
-            videoPanel.offsetTop + 'px';
+          if (top > 0 && top < docHeight) {
+            videoPanel.style.top = top + 'px';
+
+            videoPanel.style.height =
+              globalOffset[3] -
+              videoPanel.offsetTop + 'px';
+          }
         } else if (
           document.body.style.cursor === 's-resize'
         ) {
-          videoPanel.style.height =
-            e.clientY - 1.5 * delta -
-            videoPanel.offsetTop + 'px';
+          const height = e.clientY + delta / 2 -
+            videoPanel.offsetTop;
+
+          if (height > 100 && height < docHeight) {
+            videoPanel.style.height = height + 'px';
+          }
         }
       }
     };
   }
 
-  function addClickEventListenerToThumbnails() {
+  const addClickEventListenerToThumbnails = () => {
     let thumbnail = getVideoLinksWithThumbnail();
 
     for (let link of thumbnail) {
@@ -244,23 +257,23 @@ import '../css/style.css';
     }
   }
 
-  function insertPlayButton(element) {
+  const insertPlayButton = (element) => {
     if (!element.querySelector('svg'))
-      element.childNodes[1].innerHTML = PLAYBUTTON;
+      element.childNodes[1].innerHTML = playButtonHTML;
   }
 
-  function changeVideoButtonColor(element) {
+  const changeVideoButtonColor = (element) => {
     let button = element.querySelector('svg');
     if (!!button) button.style.fill = 'red';
   }
 
-  function getVideoLinksWithThumbnail() {
+  const getVideoLinksWithThumbnail = () => {
     return Array.from(document.querySelectorAll('a'))
       .filter((link) => isSupportedVideoLink(link))
       .filter((link) => link.querySelector('img'));
   }
 
-  function makeVideo(src) {
+  const makeVideo = (src) => {
     setVideoFrameBoundAsBefore();
     iframe.setAttribute(
       'src',
@@ -279,7 +292,7 @@ import '../css/style.css';
     changeFavicon();
   }
 
-  function getEmbeddedVideoUrl(href) {
+  const getEmbeddedVideoUrl = (href) => {
     if (href.includes(supportedDomains.youtube))
       return getYoutubeEmbeddedVideoUrl(href);
     else if (href.includes(supportedDomains.bilibili)) {
@@ -287,11 +300,13 @@ import '../css/style.css';
     }
   }
 
-  function getYoutubeEmbeddedVideoUrl(url) {
-    return url.split('&')[0].replace('watch?v=', 'embed/') + '?autoplay=1';
+  const getYoutubeEmbeddedVideoUrl = (url) => {
+    return url.split('&')[0].replace(
+      'watch?v=', 'embed/'
+    ) + '?autoplay=1';
   }
 
-  function getBilibiliEmbeddedVideoUrl(href) {
+  const getBilibiliEmbeddedVideoUrl = (href) => {
     if (href.includes('av')) {
       return (
         '//player.bilibili.com/player.html?aid=' +
@@ -307,33 +322,53 @@ import '../css/style.css';
     }
   }
 
-  function saveVideoFrame(resolve) {
-    browser.storage.local
-      .set({
-        videoFrameBound: JSON.stringify(
-          videoPanel.getBoundingClientRect()
-        ),
-      }).then(resolve);
+  function inViewport(element) {
+    if (!element) return false;
+    if (1 !== element.nodeType) return false;
+
+    const html = document.documentElement;
+    const rect = element.getBoundingClientRect();
+
+    return !!rect &&
+      rect.bottom >= 0 &&
+      rect.right >= 0 &&
+      rect.left <= html.clientWidth &&
+      rect.top <= html.clientHeight;
   }
 
-  function setVideoFrameBoundAsBefore() {
-    browser.storage.local.get(['videoFrameBound'])
-      .then(function (info) {
+  const saveVideoFrame = (resolve) => {
+    const videoPanel =
+      document.getElementsByClassName('videoPanel')[0];
+    if (!inViewport(videoPanel)) return;
+    Browser.storage.local.set({
+      videoFrameBound: JSON.stringify(
+        videoPanel.getBoundingClientRect()
+      ),
+    }).then(resolve);
+  }
+
+  const setVideoFrameBoundAsBefore = () => {
+    Browser.storage.local.get(['videoFrameBound'])
+      .then((info) => {
         let bound;
 
         if (info && info.videoFrameBound)
           bound = JSON.parse(info.videoFrameBound);
 
         if (bound && bound.height > 30) {
-          videoPanel.style.top = bound.top.toString() + 'px';
-          videoPanel.style.height = (bound.height - 40).toString() + 'px';
-          videoPanel.style.width = (bound.width - 40).toString() + 'px';
-          videoPanel.style.left = bound.left.toString() + 'px';
+          videoPanel.style.top =
+            bound.top.toString() + 'px';
+          videoPanel.style.height =
+            bound.height.toString() + 'px';
+          videoPanel.style.width =
+            bound.width.toString() + 'px';
+          videoPanel.style.left =
+            bound.left.toString() + 'px';
         }
       });
   }
 
-  function isSupportedVideoLink(videoLink) {
+  const isSupportedVideoLink = (videoLink) => {
     return (
       (videoLink.href.indexOf('https://www.youtube.com/watch') === 0 &&
         !videoLink.href.includes('t=')) ||
@@ -345,7 +380,7 @@ import '../css/style.css';
     );
   }
 
-  function insertPlayButtons() {
+  const insertPlayButtons = () => {
     if (
       document.getElementsByClassName(
         'instantYoutubeViewCount').length === 0 &&
@@ -354,7 +389,7 @@ import '../css/style.css';
     ) {
       videoLinks = Array.from(document.querySelectorAll('a'));
 
-      let urls = videoLinks.reduce(function (result, videoLink) {
+      let urls = videoLinks.reduce((result, videoLink) => {
         if (isSupportedVideoLink(videoLink)) {
           if (
             !result.includes(videoLink.href) ||
@@ -364,42 +399,11 @@ import '../css/style.css';
             container.className = 'instantYoutubeButtonContainer';
 
             let shadowRoot = container.attachShadow({ mode: 'open' });
-            shadowRoot.innerHTML = `
-            <style>
-                :host {
-                    display: flex;
-                    color: #444444;
-                    font-size: 15px;
-                    align-items: center;
-                    height: 24px;
-                }
-            
-                .instantYoutubeWatchButton {
-                    height: 20px;
-                    width: 20px;
-                    cursor: pointer;
-                    border: none;
-                    margin-right: 8px;
-                    padding: 1px 0 1px 0;
-                    display: flex;
-                    align-items: center;
-                }
-                
-                .instantYoutubeViewCount {
-                    color: #555555;
-                    text-align: center;
-                    /*margin-top: 2px;*/
-                }
-            </style>`;
+            shadowRoot.innerHTML = buttonContainerHTML;
 
             let button = document.createElement('div');
             button.className = 'instantYoutubeWatchButton';
-            button.innerHTML = `<svg fill='#555555' viewBox='0 0 24 24'>
-                    <path d='M10 16.5l6-4.5-6-4.5v9zM5 20h14a1 1 0 0 0 1-1V5a1 1 0 0 
-                    0-1-1H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1zm14.5 2H5a3 3 0 0 1-3-3V4.4A2.4 2.4 
-                    0 0 1 4.4 2h15.2A2.4 2.4 0 0 1 22 4.4v15.1a2.5 2.5 0 0 1-2.5 2.5'>
-                    </path>
-                    </svg>`;
+            button.innerHTML = buttonHTML;
 
             shadowRoot.appendChild(button);
             button.onclick = (e) => {
@@ -410,11 +414,11 @@ import '../css/style.css';
 
             if (
               !videoLink.querySelector('img') ||
-              videoLinks.filter((link) => link.href === videoLink.href)
-                .length ===
-              videoLinks.filter(
-                (link) =>
-                  link.href === videoLink.href && link.querySelector('img')
+              videoLinks.filter((link) =>
+                link.href === videoLink.href).length ===
+              videoLinks.filter((link) =>
+                link.href === videoLink.href &&
+                link.querySelector('img')
               ).length ||
               window.location.href.includes('duckduckgo')
             ) {
@@ -434,25 +438,27 @@ import '../css/style.css';
         return result;
       }, []);
 
-      if (!document.location.href.includes('www.youtube.com'))
-        browser.runtime.sendMessage({
+      if (!document.location.href.includes(
+        'www.youtube.com')
+      )
+        Browser.runtime.sendMessage({
           type: 'viewCount',
           urls: urls,
         });
     }
   }
 
-  function changeVideoTime(url) {
+  const changeVideoTime = (url) => {
     url = url.split('&t=');
 
-    browser.runtime.sendMessage({
+    Browser.runtime.sendMessage({
       type: 'changeVideoTime',
       url: url[0],
       time: url.length > 1 ? url[1] : 0,
     });
   }
 
-  function buttonClickHandler(videoLink, button) {
+  const buttonClickHandler = (videoLink, button) => {
     let src,
       href = videoLink.href;
 
@@ -461,8 +467,9 @@ import '../css/style.css';
       src = src.replace('watch?v=', 'embed/') + '?autoplay=1';
 
       if (
-        document.getElementsByClassName('instantYoutubeVideoContainer')
-          .length !== 0 &&
+        document.getElementsByClassName(
+          'instantYoutubeVideoContainer'
+        ).length !== 0 &&
         src === iframe.src
       )
         return;
@@ -483,11 +490,12 @@ import '../css/style.css';
       button.firstChild.style.fill = 'rgb(0, 160, 215)';
     }
 
-    if (currentPlayButton) currentPlayButton.firstChild.style.fill = '';
+    if (currentPlayButton)
+      currentPlayButton.firstChild.style.fill = '';
 
     currentPlayButton = button;
 
-    browser.runtime.sendMessage({
+    Browser.runtime.sendMessage({
       type: 'closeOthers',
       url: videoLink.href,
     });
@@ -495,10 +503,12 @@ import '../css/style.css';
     makeVideo(src);
   }
 
-  function keyMomentsHandler() {
-    new MutationObserver(function () {
+  const keyMomentsHandler = () => {
+    new MutationObserver(() => {
       try {
-        let videoLinks = Array.from(document.querySelectorAll('a'));
+        let videoLinks = Array.from(
+          document.querySelectorAll('a')
+        );
         for (let i = 0; i < videoLinks.length; i++) {
           let videoLink = videoLinks[i];
 
@@ -506,7 +516,9 @@ import '../css/style.css';
           else processedLinks.push(videoLink);
 
           if (
-            videoLink.href.indexOf('https://www.youtube.com/watch') === 0 &&
+            videoLink.href.indexOf(
+              'https://www.youtube.com/watch'
+            ) === 0 &&
             videoLink.href.includes('t=')
           ) {
             let href = videoLink.href;
@@ -523,13 +535,17 @@ import '../css/style.css';
                 /* Will change after buttonClickHandler */
                 previousIframeSrc = iframe.src;
 
-              buttonClickHandler(urlButton.videoLink, urlButton.button);
+              buttonClickHandler(
+                urlButton.videoLink,
+                urlButton.button
+              );
 
-              let timeout =
-                previousIframeSrc &&
-                  previousIframeSrc.includes(url.split('v=')[1])
-                  ? 0
-                  : 1000;
+              let timeout = previousIframeSrc &&
+                previousIframeSrc.includes(
+                  url.split('v=')[1]
+                )
+                ? 0
+                : 1000;
               window.setTimeout(() => {
                 changeVideoTime(videoLink.href);
               }, timeout);
@@ -539,14 +555,17 @@ import '../css/style.css';
       } catch (error) {
         console.log(error);
       }
-    }).observe(document, { childList: true, subtree: true });
+    }).observe(document, {
+      childList: true,
+      subtree: true
+    });
   }
 
-  function removeVideo() {
+  const removeVideo = () => {
     restoreFavicon();
     if (
       document.getElementsByClassName(
-        'instantYoutubeVideoContainer'
+        'videoPanel'
       ).length > 0
     ) {
       saveVideoFrame(() => {
@@ -566,7 +585,7 @@ import '../css/style.css';
     if (event.key === 'Escape') removeVideo();
   });
 
-  function insertVideoViewCount(message) {
+  const insertVideoViewCount = (message) => {
     for (let videoLink of videoLinks) {
       if (
         videoLink.href === message.url &&
@@ -599,11 +618,11 @@ import '../css/style.css';
       )[0].appendChild(link);
     }
 
-    browser.runtime.sendMessage({
+    Browser.runtime.sendMessage({
       type: 'getFaviconURL',
     });
 
-    link.href = browser.extension.getURL(
+    link.href = chrome.runtime.getURL(
       'images/Logo.png'
     );
   };
@@ -612,10 +631,10 @@ import '../css/style.css';
     let link = document.querySelector(
       "link[rel~='icon']"
     );
-    link.href = originalFavicon;
+    if (link) link.href = originalFavicon;
   };
 
-  browser.runtime.onMessage.addListener(
+  Browser.runtime.onMessage.addListener(
     (message) => {
       switch (message.type) {
         case 'viewCount':
@@ -646,17 +665,14 @@ import '../css/style.css';
       ? 'onmessage'
       : 'message';
 
-    eventer(
-      messageEvent,
-      function (e) {
-        if (
-          e.message === 'removeVideo' ||
-          e.data === 'removeVideo'
-        )
-          removeVideo();
-      },
-      false
-    );
+    eventer(messageEvent, (e) => {
+      if (
+        e.message === 'removeVideo' ||
+        e.data === 'removeVideo'
+      ) {
+        removeVideo();
+      }
+    }, false);
 
     if (
       document.getElementsByClassName(
@@ -679,7 +695,7 @@ import '../css/style.css';
     }
   }, 1000);
 
-  function main() {
+  const main = () => {
     createVideoPanel();
     setVideoFrameBoundAsBefore();
     // addClickEventListenerToThumbnails();

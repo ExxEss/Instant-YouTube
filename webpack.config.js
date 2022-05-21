@@ -8,6 +8,8 @@ module.exports = {
     './src/js/href': './src/js/href.js',
   },
 
+  stats: 'none',
+
   output: {
     path: path.join(__dirname, 'dist'),
     filename: "[name].js",
