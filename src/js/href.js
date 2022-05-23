@@ -3,7 +3,7 @@ import Browser from 'webextension-polyfill';
 let previousHref;
 
 const youtubeUrlPattern =
-  /www.youtube.com\/(watch|embed)+/;
+  /www.youtube.com\/(watch)+/;
 
 setInterval(() => {
   if (

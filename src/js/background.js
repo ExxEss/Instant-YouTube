@@ -1,41 +1,52 @@
 import Browser from 'webextension-polyfill';
-import { DOMParser, parseHTML } from 'linkedom';
+import { parseHTML } from 'linkedom';
 
 (() => {
   const MAX_VIDEOS = 15,
     MAX_PINNED = 15,
-    SYNC_INTERVAL = 60000,
+    SYNC_INTERVAL = 1000,
     PINNED_OPTION_ENABLED = false,
     DEFAULT_LEN = 30,
     MAX_LEN = 35;
 
-  let history = {};
-
-  // const onLastError = (error) => { console.log(error); }
   const onLastError = () => void chrome.runtime.lastError;
 
-  Browser.storage.local.get(['videoHistory'])
-    .then(obj => {
-      history = obj.videoHistory
-        ? obj.videoHistory
-        : history;
-    }).catch(onLastError);
+  let historyCache = {};
+  chrome.storage.local.get(['videoHistory'],
+    obj => {
+      historyCache = obj.videoHistory || {};
+      createContextMenus();
+    });
 
   const syncHistory = () => {
-    Browser.storage.local.set({
-      videoHistory: history
+    chrome.storage.local.set({
+      videoHistory: historyCache
     });
   }
 
-  const createContextMenus = () => {
-    syncHistory();
+  const contextClick = (info, tab) => {
+    const { menuItemId } = info;
+    if (menuItemId === 'Clear') {
+      historyCache['all'] = [];
+      syncHistory();
+      createContextMenus();
+    } else {
+      let all = historyCache.all;
+      for (let i = 0; i < all.length; i++) {
+        if (menuItemId === all[i].url) {
+          play(all[i], tab);
+        }
+      }
+    }
+  }
 
-    Browser.contextMenus.removeAll().then(() => {
+  const createContextMenus = () => {
+    chrome.contextMenus.removeAll(() => {
       chrome.contextMenus.create({
         title: 'Instant Play',
         id: 'Parent',
         contexts: ['all'],
-      }, () => void chrome.runtime.lastError);
+      }, onLastError);
 
       chrome.contextMenus.create({
         title: 'Latest',
@@ -43,17 +54,17 @@ import { DOMParser, parseHTML } from 'linkedom';
         id: 'Latest',
         enabled: false,
         contexts: ['all']
-      }, () => void chrome.runtime.lastError);
+      }, onLastError);
 
-      if (Object.keys(history).length > 0) {
-        let all = history.all;
+      if (Object.keys(historyCache).length > 0) {
+        let all = historyCache.all;
         if (all.length > 0) {
           chrome.contextMenus.create({
             type: 'separator',
             parentId: 'Parent',
             id: 'Separator_latest',
             contexts: ['all']
-          }, () => void chrome.runtime.lastError);
+          }, onLastError);
 
           for (let i = 0;
             i < Math.min(MAX_VIDEOS,
@@ -65,19 +76,7 @@ import { DOMParser, parseHTML } from 'linkedom';
               parentId: 'Parent',
               id: _id,
               contexts: ['all']
-            }, () => void chrome.runtime.lastError);
-
-            const contextClick = (info, tab) => {
-              const { menuItemId } = info
-              if (menuItemId === _id) {
-                play(all[i], tab);
-                createContextMenus();
-              } else if (menuItemId === 'Clear') {
-                history['all'] = [];
-                createContextMenus();
-              }
-            }
-            chrome.contextMenus.onClicked.addListener(contextClick);
+            }, onLastError);
           }
 
           chrome.contextMenus.create({
@@ -85,16 +84,17 @@ import { DOMParser, parseHTML } from 'linkedom';
             parentId: 'Parent',
             id: 'Separator_clear',
             contexts: ['all']
-          }, () => void chrome.runtime.lastError);
+          }, onLastError);
 
           chrome.contextMenus.create({
             title: 'Clear all',
             parentId: 'Parent',
             id: 'Clear',
             contexts: ['all']
-          }, () => void chrome.runtime.lastError);
+          }, onLastError);
         }
       }
+      chrome.contextMenus.onClicked.addListener(contextClick);
     });
   };
 
@@ -112,10 +112,10 @@ import { DOMParser, parseHTML } from 'linkedom';
         } else {
           Browser.tabs.sendMessage(
             tab.id, {
-            type: 'dispalyVideo',
+            type: 'displayVideo',
             url: entry.url
           }).then(_ => {
-            add(entry.url);
+            addHistoryEntry(entry);
           }).catch(onLastError);;
         }
       }
@@ -124,7 +124,7 @@ import { DOMParser, parseHTML } from 'linkedom';
 
   const pin = (entry) => {
     remove('pinned', entry);
-    history.pinned.unshift(entry);
+    historyCache.pinned.unshift(entry);
   }
 
   const unpin = (entry) => {
@@ -132,14 +132,14 @@ import { DOMParser, parseHTML } from 'linkedom';
   }
 
   const remove = (historyKey, entry) => {
-    history[historyKey] =
-      history[historyKey].filter(
+    historyCache[historyKey] =
+      historyCache[historyKey].filter(
         _entry => _entry.url !== entry.url
       );
   }
 
   const removeAll = (entry) => {
-    Object.keys(history).forEach((key) => {
+    Object.keys(historyCache).forEach((key) => {
       remove(key, entry);
     });
   }
@@ -224,13 +224,13 @@ import { DOMParser, parseHTML } from 'linkedom';
   };
 
   const addHistoryEntry = (entry) => {
-    if (Object.keys(history).length === 0) {
-      history = {
+    if (Object.keys(historyCache).length === 0) {
+      historyCache = {
         all: [entry],
         pinned: []
       }
     } else {
-      let all = history.all;
+      let all = historyCache.all;
       for (const [index, item] of all.entries()) {
         if (item.url === entry.url) {
           all.splice(index, 1);
@@ -242,7 +242,10 @@ import { DOMParser, parseHTML } from 'linkedom';
   }
 
   const add = async (url) => {
-    const document = await getSourceAsDOM(url);
+    if (Object.keys(historyCache).length > 0 &&
+      historyCache.all[0].url === url) return;
+    const document =
+      await getSourceAsDOM(url);
     addHistoryEntry({
       url: url,
       title: document.title
@@ -278,23 +281,23 @@ import { DOMParser, parseHTML } from 'linkedom';
   }
 
   Browser.runtime.onMessage.addListener(
-    (message, sender) => {
+    (message, sender, sendResponse) => {
       switch (message.type) {
         case 'addHistory':
-          if (!message.url.includes('embed'))
-            add(message.url);
+          add(message.url);
           break;
         case 'viewCount':
           getViewsInfoByUrls(message.urls, sender);
           break;
         case 'getFaviconURL':
-          Browser.tabs.sendMessage(
-            sender.tab.id,
-            { type: 'favicon', url: sender.tab.favIconUrl }
-          ).then(_ => { }).catch(onLastError);
+          sendResponse({
+            type: 'favicon',
+            url: sender.tab.favIconUrl
+          });
           break;
         case 'changeVideoTime':
-          Browser.scripting.executeScript(sender.tab.id, {
+          Browser.scripting.executeScript(
+            sender.tab.id, {
             code: changeVideoTime(message.time),
             allFrames: true,
           });
@@ -304,7 +307,8 @@ import { DOMParser, parseHTML } from 'linkedom';
             for (const tab of tabs) {
               if (tab.id !== sender.tab.id) {
                 Browser.tabs.sendMessage(tab.id,
-                  { type: 'closeVideo' }).then(_ => { }).catch(onLastError);
+                  { type: 'closeVideo' })
+                  .then(_ => { }).catch(onLastError);
               }
             }
           });

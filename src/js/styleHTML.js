@@ -25,9 +25,10 @@ export const videoPanelStyle = `
   }
   
   .instantYoutubeEmbeddedVideo {
-    width: inherit;
-    height: inherit;
-    margin: auto;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
   }
   
   .instantYoutubeControlBar {
@@ -51,7 +52,7 @@ export const videoPanelStyle = `
     height: 10px;
     width: 10px;
     border-radius: 50%;
-    margin: 5px 5px 5px 10px;
+    margin: 8px 0px 0px 8px;
     background-color: red;
     display: flex;
     align-items: center;
@@ -99,21 +100,26 @@ export const buttonContainerHTML = `
     }
 </style>`;
 
-export const buttonHTML = `<svg fill='#555555' viewBox='0 0 24 24'>
-<path d='M10 16.5l6-4.5-6-4.5v9zM5 20h14a1 1 0 0 0 1-1V5a1 1 0 0 
-0-1-1H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1zm14.5 2H5a3 3 0 0 1-3-3V4.4A2.4 2.4 
-0 0 1 4.4 2h15.2A2.4 2.4 0 0 1 22 4.4v15.1a2.5 2.5 0 0 1-2.5 2.5'>
+export const buttonHTML =
+  `<svg fill='#555555' viewBox='0 0 24 24'>
+<path d='M10 16.5l6-4.5-6-4.5v9zM5 
+20h14a1 1 0 0 0 1-1V5a1 1 0 0 
+0-1-1H5a1 1 0 0 0-1 1v14a1 1 0 0 0 
+1 1zm14.5 2H5a3 3 0 0 1-3-3V4.4A2.4 2.4 
+0 0 1 4.4 2h15.2A2.4 2.4 0 0 1 22 
+4.4v15.1a2.5 2.5 0 0 1-2.5 2.5'>
 </path>
 </svg>`;
 
-export const playButtonHTML = `
-        <svg height='24' focusable='false' 
-        xmlns='http://www.w3.org/2000/svg' 
-        viewBox='0 0 24 24' style='opacity:100%;fill:white;
-        margin: 22px 50px 20px 46px'>
-            <path d='M12 2C6.48 2 2 
-                6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 
-                2zm-2 14.5v-9l6 4.5-6 4.5z'>
-            </path>
-        </svg>
-    `;
+export const playButtonHTML =
+  `
+  <svg height='24' focusable='false' 
+  xmlns='http://www.w3.org/2000/svg' 
+  viewBox='0 0 24 24' style='opacity:100%;fill:white;
+  margin: 22px 50px 20px 46px'>
+      <path d='M12 2C6.48 2 2 
+          6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 
+          2zm-2 14.5v-9l6 4.5-6 4.5z'>
+      </path>
+  </svg>
+`;

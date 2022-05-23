@@ -337,14 +337,15 @@ import {
   }
 
   const saveVideoFrame = (resolve) => {
-    const videoPanel =
-      document.getElementsByClassName('videoPanel')[0];
-    if (!inViewport(videoPanel)) return;
+    // const videoPanel =
+    // document.getElementsByClassName('videoPanel')[0];
+    // if (inViewport(videoPanel)) {
     Browser.storage.local.set({
       videoFrameBound: JSON.stringify(
         videoPanel.getBoundingClientRect()
       ),
     }).then(resolve);
+    // }
   }
 
   const setVideoFrameBoundAsBefore = () => {
@@ -543,9 +544,7 @@ import {
               let timeout = previousIframeSrc &&
                 previousIframeSrc.includes(
                   url.split('v=')[1]
-                )
-                ? 0
-                : 1000;
+                ) ? 0 : 1000;
               window.setTimeout(() => {
                 changeVideoTime(videoLink.href);
               }, timeout);
@@ -572,7 +571,8 @@ import {
         // changeVideoTime(iframe.src);
         closeLogo.style.display = 'none';
         iframe.src = null;
-        videoPanel.parentNode.removeChild(videoPanel);
+        if (videoPanel.parentNode)
+          videoPanel.parentNode.removeChild(videoPanel);
       });
     }
   }
@@ -607,31 +607,40 @@ import {
 
   let originalFavicon;
   const changeFavicon = () => {
-    let link = document.querySelector(
-      "link[rel~='icon']"
-    );
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'icon';
-      document.getElementsByTagName(
-        'head'
-      )[0].appendChild(link);
-    }
+    chrome.runtime.sendMessage({
+      type: 'getFaviconURL'
+    }, (response) => {
+      if (!originalFavicon && response &&
+        response.url) {
+        originalFavicon = response.url;
 
-    Browser.runtime.sendMessage({
-      type: 'getFaviconURL',
+        let link = document.querySelector(
+          "link[rel~='icon']"
+        );
+
+        if (!link) {
+          link = document.createElement('link');
+          link.rel = 'icon';
+          document.getElementsByTagName(
+            'head'
+          )[0].appendChild(link);
+        }
+
+        link.href = chrome.runtime.getURL(
+          'images/Logo.png'
+        );
+      }
     });
-
-    link.href = chrome.runtime.getURL(
-      'images/Logo.png'
-    );
   };
 
   const restoreFavicon = () => {
     let link = document.querySelector(
       "link[rel~='icon']"
     );
-    if (link) link.href = originalFavicon;
+    if (link) {
+      link.href = originalFavicon;
+      originalFavicon = null;
+    }
   };
 
   Browser.runtime.onMessage.addListener(
@@ -643,12 +652,7 @@ import {
         case 'closeVideo':
           removeVideo();
           break;
-        case 'favicon':
-          originalFavicon = originalFavicon
-            ? originalFavicon
-            : message.url;
-          break;
-        case 'dispalyVideo':
+        case 'displayVideo':
           makeVideo(message.url);
           globalMouseDown = false;
           break;
@@ -702,6 +706,5 @@ import {
     insertPlayButtons();
     keyMomentsHandler();
   }
-
   main();
 })();

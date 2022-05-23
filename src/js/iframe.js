@@ -79,6 +79,7 @@ import Browser from 'webextension-polyfill';
   }, true);
 
   window.onmessage = (e) => {
-    if (e.data.focus === true) video.focus();
+    if (e.data && e.data.focus === true)
+      video.focus();
   };
 })();
