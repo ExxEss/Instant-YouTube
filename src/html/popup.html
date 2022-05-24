@@ -10,9 +10,7 @@
   }
 
   body {
-    margin-left: 0px;
-    margin-right: 0px;
-    margin-bottom: 0px;
+    margin: 0px;
     width: 310px;
     background-color: rgb(15, 20, 35);
     font-family: Arial, Helvetica, sans-serif;
@@ -21,7 +19,7 @@
   h1 {
     font-size: 18px;
     text-align: center;
-    margin: 10px;
+    margin-left: 10px;
   }
 
   hr {
@@ -34,7 +32,11 @@
   input {
     font-size: 15px;
     margin-left: 15px;
-    position: right;
+  }
+
+  input[type="radio"] {
+    margin: 2px 8px 2px 15px;
+    vertical-align: middle;
   }
 
   label {
@@ -42,23 +44,31 @@
     display: inline-block;
   }
 
-  div {
-    display: block;
-  }
-
   .option {
+    align-items: center;
     display: inline-flex;
-    position: left;
   }
 
   .optionContainer {
     width: calc(100% - 40px);
-    margin: 15px;
+    height: 30px;
+    margin: 15px 15px 15px 25px;
     display: flex;
     align-items: center;
   }
 
+  .third {
+    width: 100%;
+    text-align: center !important;
+  }
+
   .dots {
+    display: inline-flex;
+  }
+
+  .closeDot {
+    padding: auto;
+    text-align: center;
     display: inline-flex;
   }
 
@@ -67,14 +77,14 @@
   }
 
   #head {
-    display: inline-flex;
     align-items: center;
+    display: inline-flex;
   }
 
   #headContainer {
     width: 100%;
     text-align: center;
-    margin-top: 5px;
+    margin-top: 10px;
   }
 
   #githubIcon {
@@ -120,7 +130,7 @@
   <hr>
 
   <div class="optionContainer third">
-    <label>&#10084;&#65039; Contribution</label>
+    <label>Contribution</label>
     <a href="https://github.com/ExxEss/Instant-Youtube" target="_blank">
       <img id="githubIcon" src="https://github.githubassets.com/images/modules/logos_page/Octocat.png" width="26px"
         height="26px">
