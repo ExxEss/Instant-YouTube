@@ -1,6 +1,7 @@
 {
   "name": "Instant Youtube",
   "version": "1.0",
+  "manifest_version": 3,
   "description": "Watch youtube videos anywhere",
   "author": "Xie Yuguo",
   "homepage_url": "https://github.com/ExxEss/Instant-Youtube",
@@ -13,7 +14,8 @@
     "nativeMessaging",
     "storage",
     "tabs",
-    "activeTab"
+    "activeTab",
+    "scripting"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -23,7 +25,8 @@
     "type": "module"
   },
   "action": {
-    "default_icon": "images/Logo.png"
+    "default_icon": "images/Logo.png",
+    "default_popup": "src/html/popup.html"
   },
   "content_scripts": [
     {
@@ -68,6 +71,5 @@
         "<all_urls>"
       ]
     }
-  ],
-  "manifest_version": 3
+  ]
 }
