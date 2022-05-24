@@ -94,11 +94,12 @@ import { parseHTML } from 'linkedom';
           }, onLastError);
         }
       }
-      chrome.contextMenus.onClicked.addListener(contextClick);
     });
   };
 
   createContextMenus();
+
+  chrome.contextMenus.onClicked.addListener(contextClick);
 
   const play = (entry, tab) => {
     Browser.tabs.query({}).then((tabs) => {
