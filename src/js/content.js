@@ -27,6 +27,28 @@ import {
     urlButtonMap = new Map(),
     processedLinks = [];
 
+  const onLocationChange = (() => {
+    let oldPushState = history.pushState;
+    history.pushState = function pushState() {
+      let ret = oldPushState.apply(this, arguments);
+      window.dispatchEvent(new Event('pushstate'));
+      window.dispatchEvent(new Event('locationchange'));
+      return ret;
+    };
+
+    let oldReplaceState = history.replaceState;
+    history.replaceState = function replaceState() {
+      let ret = oldReplaceState.apply(this, arguments);
+      window.dispatchEvent(new Event('replacestate'));
+      window.dispatchEvent(new Event('locationchange'));
+      return ret;
+    };
+
+    window.addEventListener('popstate', () => {
+      window.dispatchEvent(new Event('locationchange'));
+    });
+  })();
+
   const supportedDomains = {
     youtube: 'youtube.com',
     bilibili: 'bilibili.com',
@@ -337,15 +359,15 @@ import {
   }
 
   const saveVideoFrame = (resolve) => {
-    // const videoPanel =
-    // document.getElementsByClassName('videoPanel')[0];
-    // if (inViewport(videoPanel)) {
-    Browser.storage.local.set({
-      videoFrameBound: JSON.stringify(
-        videoPanel.getBoundingClientRect()
-      ),
-    }).then(resolve);
-    // }
+    const videoPanel =
+      document.getElementsByClassName('videoPanel')[0];
+    if (inViewport(videoPanel)) {
+      Browser.storage.local.set({
+        videoFrameBound: JSON.stringify(
+          videoPanel.getBoundingClientRect()
+        ),
+      }).then(resolve);
+    }
   }
 
   const setVideoFrameBoundAsBefore = () => {
@@ -384,7 +406,7 @@ import {
   const insertPlayButtons = () => {
     if (
       document.getElementsByClassName(
-        'instantYoutubeViewCount').length === 0 &&
+        'instantYoutubeButtonContainer').length === 0 &&
       !document.location.href.includes('youtube.com') &&
       !document.location.href.includes('bilibili.com')
     ) {
@@ -465,7 +487,8 @@ import {
 
     if (href.includes('youtube')) {
       src = href.split('&')[0];
-      src = src.replace('watch?v=', 'embed/') + '?autoplay=1';
+      src = src.replace('watch?v=', 'embed/') +
+        '?autoplay=1';
 
       if (
         document.getElementsByClassName(
@@ -699,12 +722,20 @@ import {
     }
   }, 1000);
 
-  const main = () => {
+  window.addEventListener('locationchange',
+    () => {
+      let containers = document.getElementsByClassName('instantYoutubeButtonContainer'),
+        container;
+      while (container = containers[0]) {
+        container.parentNode.removeChild(container);
+      }
+      insertPlayButtons();
+    });
+
+  const main = (() => {
     createVideoPanel();
     setVideoFrameBoundAsBefore();
-    // addClickEventListenerToThumbnails();
     insertPlayButtons();
     keyMomentsHandler();
-  }
-  main();
+  })();
 })();
