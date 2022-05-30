@@ -6,6 +6,7 @@ module.exports = {
     './src/js/background': './src/js/background.js',
     './src/js/iframe': './src/js/iframe.js',
     './src/js/href': './src/js/href.js',
+    './src/js/popup': './src/js/popup.js',
   },
 
   stats: 'none',
