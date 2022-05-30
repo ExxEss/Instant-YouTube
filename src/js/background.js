@@ -2,25 +2,54 @@ import Browser from 'webextension-polyfill';
 import { parseHTML } from 'linkedom';
 
 (() => {
-  const MAX_VIDEOS = 15,
-    MAX_PINNED = 15,
+  let maxVideo = 15,
+    closeDotPosition = 'left';
+
+  const MAX_PINNED = 15,
     SYNC_INTERVAL = 1000,
     PINNED_OPTION_ENABLED = false,
     DEFAULT_LEN = 30,
     MAX_LEN = 35;
 
+  // For migrating version 1.0 data
+  const PREVIOUS_HISTORY_KEY = 'videoHistory',
+
+    // Version 1.1 keys
+    HISTORY_KEY = 'Instant_YouTube_Video_History',
+    PREFERENCES_KEY = 'Instant_YouTube_Preferences';
+
   const onLastError = () => void chrome.runtime.lastError;
 
-  let historyCache = {};
-  chrome.storage.local.get(['videoHistory'],
+  let historyCache, preferences;
+  chrome.storage.local.get([PREVIOUS_HISTORY_KEY],
     obj => {
-      historyCache = obj.videoHistory || {};
-      createContextMenus();
+      historyCache = obj[PREVIOUS_HISTORY_KEY];
+      if (!historyCache) {
+        chrome.storage.local.get([HISTORY_KEY],
+          obj => {
+            historyCache = obj[HISTORY_KEY] || {};
+            createContextMenus();
+          });
+      } else {
+        createContextMenus();
+        chrome.storage.local.remove(
+          [PREVIOUS_HISTORY_KEY]
+        );
+      }
+    });
+
+  chrome.storage.local.get([PREFERENCES_KEY],
+    obj => {
+      preferences = obj[PREFERENCES_KEY] || {};
+      maxVideo = preferences.maxVideo || maxVideo;
+      closeDotPosition =
+        preferences?.closeDotPosition ||
+        closeDotPosition;
     });
 
   const syncHistory = () => {
     chrome.storage.local.set({
-      videoHistory: historyCache
+      [HISTORY_KEY]: historyCache
     });
   }
 
@@ -67,7 +96,7 @@ import { parseHTML } from 'linkedom';
           }, onLastError);
 
           for (let i = 0;
-            i < Math.min(MAX_VIDEOS,
+            i < Math.min(maxVideo,
               all.length); i++) {
             const _id = all[i].url;
 
@@ -170,7 +199,9 @@ import { parseHTML } from 'linkedom';
           if (url.includes('www.youtube.com')) {
             let scripts =
               document.querySelectorAll('script'),
-              script = scripts[scripts.length - 5].innerText,
+              script = scripts[
+                scripts.length - 5
+              ].innerText,
               index = script.indexOf('simpleText'),
               subscript = script.substr(index - 2, 40);
             viewCount = subscript.split('"')[3];
@@ -243,8 +274,9 @@ import { parseHTML } from 'linkedom';
   }
 
   const add = async (url) => {
-    if (Object.keys(historyCache).length > 0 &&
-      historyCache.all[0].url === url) return;
+    if (historyCache.all &&
+      historyCache.all[0].url === url)
+      return;
     const document =
       await getSourceAsDOM(url);
     addHistoryEntry({
@@ -317,6 +349,20 @@ import { parseHTML } from 'linkedom';
           break;
       }
     });
+
+  chrome.runtime.onConnect.addListener((port) => {
+    console.log("Connected .....");
+    port.onMessage.addListener(function (msg) {
+      switch (msg.type) {
+        case 0:
+          maxVideo = parseInt(msg.value);
+          createContextMenus();
+          break;
+        default:
+          closeDotPosition = msg.value;
+      }
+    });
+  });
 
   setInterval(syncHistory, SYNC_INTERVAL);
 })();
