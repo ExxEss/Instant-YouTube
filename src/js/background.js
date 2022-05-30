@@ -11,31 +11,16 @@ import { parseHTML } from 'linkedom';
     DEFAULT_LEN = 30,
     MAX_LEN = 35;
 
-  // For migrating version 1.0 data
-  const PREVIOUS_HISTORY_KEY = 'videoHistory',
-
-    // Version 1.1 keys
-    HISTORY_KEY = 'Instant_YouTube_Video_History',
-    PREFERENCES_KEY = 'Instant_YouTube_Preferences';
+  const HISTORY_KEY = 'videoHistory',
+    PREFERENCES_KEY = 'preferences';
 
   const onLastError = () => void chrome.runtime.lastError;
 
-  let historyCache, preferences;
-  chrome.storage.local.get([PREVIOUS_HISTORY_KEY],
+  let historyCache = {}, preferences = {};
+  chrome.storage.local.get([HISTORY_KEY],
     obj => {
-      historyCache = obj[PREVIOUS_HISTORY_KEY];
-      if (!historyCache) {
-        chrome.storage.local.get([HISTORY_KEY],
-          obj => {
-            historyCache = obj[HISTORY_KEY] || {};
-            createContextMenus();
-          });
-      } else {
-        createContextMenus();
-        chrome.storage.local.remove(
-          [PREVIOUS_HISTORY_KEY]
-        );
-      }
+      historyCache = obj[HISTORY_KEY] || {};
+      createContextMenus();
     });
 
   chrome.storage.local.get([PREFERENCES_KEY],
@@ -174,17 +159,6 @@ import { parseHTML } from 'linkedom';
     });
   }
 
-  const changeVideoTime = (currentTime) => {
-    return `
-      (function() {
-          let video = document.querySelector('video');
-          if (video !== null) {
-              video.currentTime = ${currentTime}; 
-              video.play();
-          }
-      })();`;
-  };
-
   const getViewsInfoByUrls = async (urls, sender) => {
     for (let url of urls) {
       if (
@@ -274,7 +248,7 @@ import { parseHTML } from 'linkedom';
   }
 
   const add = async (url) => {
-    if (historyCache.all &&
+    if (historyCache.all && historyCache.all.length > 0 &&
       historyCache.all[0].url === url)
       return;
     const document =
@@ -326,13 +300,6 @@ import { parseHTML } from 'linkedom';
           sendResponse({
             type: 'favicon',
             url: sender.tab.favIconUrl
-          });
-          break;
-        case 'changeVideoTime':
-          Browser.scripting.executeScript(
-            sender.tab.id, {
-            code: changeVideoTime(message.time),
-            allFrames: true,
           });
           break;
         case 'closeOthers':

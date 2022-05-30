@@ -4,12 +4,16 @@ import Browser from 'webextension-polyfill';
 
 import {
   buttonHTML,
-  playButtonHTML,
   videoPanelStyle,
   buttonContainerHTML
 } from './styleHTML';
 
 (() => {
+  if (document.location.href.includes('youtube.com') ||
+    document.location.href.includes('bilibili.com')) {
+    return;
+  }
+
   let videoLinks,
     iframe,
     iframeContainer,
@@ -119,6 +123,8 @@ import {
       "gyroscope; picture-in-picture"
     );
     iframe.setAttribute('allowfullscreen', '');
+
+    setVideoFrameBoundAsBefore();
 
     closeDot.onmouseover = () => {
       closeLogo.style.display = 'block';
@@ -440,17 +446,7 @@ import {
     }
   }
 
-  const changeVideoTime = (url) => {
-    url = url.split('&t=');
-
-    Browser.runtime.sendMessage({
-      type: 'changeVideoTime',
-      url: url[0],
-      time: url.length > 1 ? url[1] : 0,
-    });
-  }
-
-  const buttonClickHandler = (videoLink, button) => {
+  const buttonClickHandler = (videoLink, button, startTime) => {
     let src,
       href = videoLink.href;
 
@@ -458,6 +454,10 @@ import {
       src = href.split('&')[0];
       src = src.replace('watch?v=', 'embed/') +
         '?autoplay=1';
+
+      if (startTime) {
+        src += '&start=' + startTime;
+      }
 
       if (
         document.getElementsByClassName(
@@ -496,60 +496,40 @@ import {
     makeVideo(src);
   }
 
-  const keyMomentsHandler = () => {
-    new MutationObserver(() => {
-      try {
-        let videoLinks = Array.from(
-          document.querySelectorAll('a')
-        );
-        for (let i = 0; i < videoLinks.length; i++) {
-          let videoLink = videoLinks[i];
+  const keyMomentHandler = () => {
+    let videoLinks = Array.from(
+      document.querySelectorAll('a')
+    );
+    for (let i = 0; i < videoLinks.length; i++) {
+      let videoLink = videoLinks[i];
 
-          if (processedLinks.includes(videoLink)) return;
-          else processedLinks.push(videoLink);
+      if (processedLinks.includes(videoLink)) return;
+      else processedLinks.push(videoLink);
 
-          if (
-            videoLink.href.indexOf(
-              'https://www.youtube.com/watch'
-            ) === 0 &&
-            videoLink.href.includes('t=')
-          ) {
-            let href = videoLink.href;
+      if (
+        videoLink.href.indexOf(
+          'https://www.youtube.com/watch'
+        ) === 0 &&
+        videoLink.href.includes('&t=')
+      ) {
+        let href = videoLink.href,
+          startTime = href.split('&t=')[1];
 
-            videoLink.onclick = (e) => {
-              e.preventDefault();
-              e.stopImmediatePropagation();
+        videoLink.onclick = (e) => {
+          e.preventDefault();
+          e.stopImmediatePropagation();
 
-              /* Google search could change href after clicking for Firefox */
-              videoLink.href = href;
+          let url = href.split('&t=')[0],
+            urlButton = urlButtonMap.get(url);
 
-              let url = href.split('&t')[0],
-                urlButton = urlButtonMap.get(url),
-                /* Will change after buttonClickHandler */
-                previousIframeSrc = iframe.src;
-
-              buttonClickHandler(
-                urlButton.videoLink,
-                urlButton.button
-              );
-
-              let timeout = previousIframeSrc &&
-                previousIframeSrc.includes(
-                  url.split('v=')[1]
-                ) ? 0 : 1000;
-              window.setTimeout(() => {
-                changeVideoTime(videoLink.href);
-              }, timeout);
-            };
-          }
-        }
-      } catch (error) {
-        console.log(error);
+          buttonClickHandler(
+            urlButton.videoLink,
+            urlButton.button,
+            startTime
+          );
+        };
       }
-    }).observe(document, {
-      childList: true,
-      subtree: true
-    });
+    }
   }
 
   const removeVideo = () => {
@@ -560,7 +540,6 @@ import {
     ) {
       restoreFavicon();
       saveVideoFrame(() => {
-        // changeVideoTime(iframe.src);
         closeLogo.style.display = 'none';
         iframe.src = null;
         if (videoPanel.parentNode)
@@ -678,6 +657,12 @@ import {
       insertPlayButtons();
   };
 
+  window.onclick = () => {
+    if (document.location.href.includes('www.google.com')) {
+      keyMomentHandler();
+    }
+  }
+
   window.setInterval(() => {
     if (
       !isSelectable(document.activeElement) &&
@@ -703,8 +688,6 @@ import {
 
   const main = (() => {
     createVideoPanel();
-    setVideoFrameBoundAsBefore();
     insertPlayButtons();
-    keyMomentsHandler();
   })();
 })();
