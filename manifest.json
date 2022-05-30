@@ -1,8 +1,8 @@
 {
-  "name": "Instant Youtube",
+  "name": "Instant YouTube",
   "version": "1.0",
   "manifest_version": 3,
-  "description": "Watch youtube videos anywhere",
+  "description": "Watch YouTube videos anywhere",
   "author": "Xie Yuguo",
   "homepage_url": "https://github.com/ExxEss/Instant-Youtube",
   "content_security_policy": {
@@ -31,7 +31,9 @@
   "content_scripts": [
     {
       "matches": [
-        "*://*/*"
+        "*://*/*",
+        "<all_urls>",
+        "file://*/*"
       ],
       "js": [
         "dist/src/js/content.js"
