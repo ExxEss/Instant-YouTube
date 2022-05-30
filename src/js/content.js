@@ -144,7 +144,7 @@ import {
       saveVideoFrame();
     };
 
-    window.onmousedown = (e) => {
+    videoPanel.onmousedown = (e) => {
       globalMouseDown = true;
       globalOffset = [
         videoPanel.offsetLeft - e.clientX,
@@ -257,44 +257,6 @@ import {
     };
   }
 
-  const addClickEventListenerToThumbnails = () => {
-    let thumbnail = getVideoLinksWithThumbnail();
-
-    for (let link of thumbnail) {
-      let thumbnail = !!link.querySelector('g-img')
-        ? link.querySelector('g-img')
-        : link.querySelector('img');
-
-      thumbnail.parentElement.addEventListener(
-        'click',
-        (event) => {
-          event.preventDefault();
-          event.stopImmediatePropagation();
-          makeVideo(link.href);
-          insertPlayButton(thumbnail);
-          changeVideoButtonColor(thumbnail.parentElement);
-        },
-        true
-      );
-    }
-  }
-
-  const insertPlayButton = (element) => {
-    if (!element.querySelector('svg'))
-      element.childNodes[1].innerHTML = playButtonHTML;
-  }
-
-  const changeVideoButtonColor = (element) => {
-    let button = element.querySelector('svg');
-    if (!!button) button.style.fill = 'red';
-  }
-
-  const getVideoLinksWithThumbnail = () => {
-    return Array.from(document.querySelectorAll('a'))
-      .filter((link) => isSupportedVideoLink(link))
-      .filter((link) => link.querySelector('img'));
-  }
-
   const makeVideo = (src) => {
     setVideoFrameBoundAsBefore();
     iframe.setAttribute(
@@ -393,12 +355,19 @@ import {
 
   const isSupportedVideoLink = (videoLink) => {
     return (
-      (videoLink.href.indexOf('https://www.youtube.com/watch') === 0 &&
+      (videoLink.href.indexOf(
+        'https://www.youtube.com/watch'
+      ) === 0 &&
         !videoLink.href.includes('t=')) ||
-      (videoLink.href.indexOf('https://www.bilibili.com') === 0 &&
+      (videoLink.href.indexOf(
+        'https://www.bilibili.com'
+      ) === 0 &&
         videoLink.href.includes('video')) ||
-      (videoLink.href.includes('m.bilibili.com') &&
-        videoLink.href.indexOf('https://m.bilibili.com') === 0 &&
+      (videoLink.href.includes(
+        'm.bilibili.com'
+      ) && videoLink.href.indexOf(
+        'https://m.bilibili.com'
+      ) === 0 &&
         videoLink.href.includes('video'))
     );
   }
@@ -584,12 +553,12 @@ import {
   }
 
   const removeVideo = () => {
-    restoreFavicon();
     if (
       document.getElementsByClassName(
         'videoPanel'
       ).length > 0
     ) {
+      restoreFavicon();
       saveVideoFrame(() => {
         // changeVideoTime(iframe.src);
         closeLogo.style.display = 'none';
