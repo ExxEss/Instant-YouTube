@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-// Usage: ./make.js command. Use -h for help.
-// This is a set of tasks for building and testing Vimium in development.
+// Usage: ./make.js command. 
 
 fs = require("fs");
 child_process = require("child_process");
@@ -97,10 +96,10 @@ command(
   "Builds a zip file for submission to the Chrome store. The output is in dist/",
   buildStorePackage);
 
-  commandArg = process.argv[2]
+commandArg = process.argv[2]
 
-  if (commands[commandArg]) {
-    commands[commandArg].fn();
-  } else {
-    process.exit(1);
-  }
+if (commands[commandArg]) {
+  commands[commandArg].fn();
+} else {
+  process.exit(1);
+}
