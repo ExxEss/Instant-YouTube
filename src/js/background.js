@@ -57,7 +57,7 @@ import { parseHTML } from 'linkedom';
   const createContextMenus = () => {
     chrome.contextMenus.removeAll(() => {
       chrome.contextMenus.create({
-        title: 'Instant Play',
+        title: 'Instant YouTube',
         id: 'Parent',
         contexts: ['all'],
       }, onLastError);
