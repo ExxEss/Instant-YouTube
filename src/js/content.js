@@ -267,7 +267,7 @@ import {
     setVideoFrameBoundAsBefore();
     iframe.setAttribute(
       'src',
-      src.includes('embed')
+      src.includes('embed') || src.includes('player')
         ? src
         : getEmbeddedVideoUrl(src)
     );
